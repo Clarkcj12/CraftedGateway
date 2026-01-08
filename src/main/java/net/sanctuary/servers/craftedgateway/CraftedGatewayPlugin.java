@@ -15,6 +15,8 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        String version = getDescription().getVersion();
+        getLogger().info("CraftedGateway v" + version + " is starting...");
         saveDefaultConfig();
         audiences = BukkitAudiences.create(this);
         votdService = new VotdService(this, audiences);
@@ -23,11 +25,12 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         commandManager = new BukkitCommandManager(this);
         commandManager.registerCommand(new GatewayCommand(this));
         commandManager.registerCommand(new VotdCommand(this, votdService));
-        getLogger().info("CraftedGateway enabled.");
+        getLogger().info("CraftedGateway v" + version + " is ready.");
     }
 
     @Override
     public void onDisable() {
+        String version = getDescription().getVersion();
         if (votdService != null) {
             votdService.stop();
             votdService = null;
@@ -37,7 +40,7 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
             audiences = null;
         }
         commandManager = null;
-        getLogger().info("CraftedGateway disabled.");
+        getLogger().info("CraftedGateway v" + version + " has stopped.");
     }
 
     public BukkitAudiences audiences() {
