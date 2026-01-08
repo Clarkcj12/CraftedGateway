@@ -15,6 +15,10 @@ public final class MessageTemplate {
     private MessageTemplate() {
     }
 
+    public static Component render(String template, String... keyValues) {
+        return render(template, (Object[]) keyValues);
+    }
+
     public static Component render(String template, Object... keyValues) {
         if (template == null) {
             return Component.empty();
@@ -22,6 +26,7 @@ public final class MessageTemplate {
         if (keyValues.length % 2 != 0) {
             throw new IllegalArgumentException("Key/value pairs must be even.");
         }
+        validateKeys(keyValues);
         if (usesLegacyFormat(template)) {
             return LEGACY_SERIALIZER.deserialize(applyLegacyPlaceholders(template, keyValues));
         }
@@ -122,7 +127,13 @@ public final class MessageTemplate {
         if (index < 0) {
             return null;
         }
-        return Objects.toString(keyValues[index + 1], "");
+        Object value = keyValues[index + 1];
+        if (value instanceof Component) {
+            throw new IllegalArgumentException(
+                "Component values are not supported in legacy templates for key '" + key + "'."
+            );
+        }
+        return Objects.toString(value, "");
     }
 
     private static int findKeyIndex(Object[] keyValues, String key) {
@@ -147,5 +158,16 @@ public final class MessageTemplate {
             return (String) value;
         }
         throw new IllegalArgumentException("Placeholder key at index " + index + " must be a String.");
+    }
+
+    private static void validateKeys(Object[] keyValues) {
+        for (int i = 0; i < keyValues.length; i += 2) {
+            Object key = keyValues[i];
+            if (key != null && !(key instanceof String)) {
+                throw new IllegalArgumentException(
+                    "Placeholder key at index " + i + " must be a String."
+                );
+            }
+        }
     }
 }

@@ -72,6 +72,7 @@ See `docs/MINIMESSAGE.md` for a MiniMessage primer.
 - `{artist}` - song artist.
 - `{title}` - song title.
 - `{url}` - clickable label that opens the station URL (MiniMessage templates only).
+- `radio.url-label` only affects MiniMessage templates; legacy `&` formats still render the raw URL.
 
 ### API URLs
 - `api-url` and `random-api-url` accept `%s` for the Bible version.
