@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'net.sanctuary-servers'
-version = '0.1.1-SNAPSHOT'
+version = '0.1.2'
 description = 'CraftedGateway plugin for SanctuaryMC.'
 
 java {
