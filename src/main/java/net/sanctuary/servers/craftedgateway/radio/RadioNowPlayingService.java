@@ -343,6 +343,9 @@ public final class RadioNowPlayingService {
     }
 
     private void handleNowPlayingPayload(JsonObject payload) {
+        if (!announcementEnabled) {
+            return;
+        }
         JsonObject nowPlaying = extractNowPlayingPayload(payload);
         SongInfo info = parseSongInfo(nowPlaying);
         if (info == null || info.text().isBlank()) {
@@ -351,9 +354,6 @@ public final class RadioNowPlayingService {
         String key = info.key();
         String previous = lastSongKey.getAndSet(key);
         if (Objects.equals(previous, key)) {
-            return;
-        }
-        if (!announcementEnabled) {
             return;
         }
 
