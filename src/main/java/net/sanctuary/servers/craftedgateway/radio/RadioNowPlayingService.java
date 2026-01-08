@@ -84,6 +84,7 @@ public final class RadioNowPlayingService {
         cancelReconnect();
         closeSocket();
         lastSongKey.set(null);
+        lastSongText = "";
     }
 
     public void reload() {
@@ -148,6 +149,7 @@ public final class RadioNowPlayingService {
         closeSocket();
         cancelReconnect();
         lastSongKey.set(null);
+        lastSongText = "";
         if (!enabled) {
             return;
         }
