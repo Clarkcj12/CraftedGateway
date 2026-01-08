@@ -365,7 +365,7 @@ public final class RadioNowPlayingService {
             return;
         }
 
-        boolean legacyFormat = usesLegacyFormat(messageFormat);
+        boolean legacyFormat = MessageTemplate.usesLegacyFormat(messageFormat);
         Object urlValue = stationUrl;
         if (!legacyFormat && stationUrl != null && !stationUrl.isBlank()) {
             String label = urlLabel == null || urlLabel.isBlank() ? stationUrl : urlLabel;
@@ -591,12 +591,6 @@ public final class RadioNowPlayingService {
         return "";
     }
 
-    private static boolean usesLegacyFormat(String template) {
-        if (template == null) {
-            return false;
-        }
-        return template.indexOf('&') >= 0 && template.indexOf('<') < 0;
-    }
 
     private record SongInfo(String key, String text, String artist, String title) {
     }
