@@ -17,6 +17,7 @@
 - Connects to AzuraCast WebSocket updates.
 - Broadcasts the current song when it changes.
 - Includes the station URL in the announcement.
+- Subscribes using the AzuraCast station shortcode.
 - Restart the server to apply radio configuration changes.
 
 ## Configuration
@@ -37,7 +38,8 @@ votd:
 radio:
   enabled: false
   debug-logging: false
-  websocket-url: "wss://radio.sanctuaryunited.net/api/live/nowplaying/sanctuary_radio"
+  websocket-url: "wss://radio.sanctuaryunited.net/api/live/nowplaying/websocket"
+  station-shortcode: "sanctuary_radio"
   station-url: "https://radio.sanctuaryunited.net/public/sanctuary_radio"
   message-format: "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>"
   reconnect-delay-seconds: 10
