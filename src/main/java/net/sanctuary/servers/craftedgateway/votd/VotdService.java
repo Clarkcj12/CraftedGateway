@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 
 public final class VotdService {
     private static final String DEFAULT_VERSION = "KJV";
@@ -108,20 +109,26 @@ public final class VotdService {
             cachedRandomVerse = null;
         }
 
+        String defaultMessageFormat = getDefaultConfigString("votd.message-format", DEFAULT_MESSAGE_FORMAT);
         messageFormat = normalizeString(
-            plugin.getConfig().getString("votd.message-format", DEFAULT_MESSAGE_FORMAT),
-            DEFAULT_MESSAGE_FORMAT
+            plugin.getConfig().getString("votd.message-format", defaultMessageFormat),
+            defaultMessageFormat
         );
         joinEnabled = plugin.getConfig().getBoolean("votd.join-enabled", true);
+        String defaultJoinFormat = getDefaultConfigString("votd.join-format", DEFAULT_JOIN_FORMAT);
         joinFormat = normalizeString(
-            plugin.getConfig().getString("votd.join-format", messageFormat),
-            DEFAULT_JOIN_FORMAT
+            plugin.getConfig().getString("votd.join-format", defaultJoinFormat),
+            defaultJoinFormat
+        );
+        String defaultRandomAnnouncement = getDefaultConfigString(
+            "votd.random-announcement-format",
+            DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT
         );
         String rawRandomFormat = plugin.getConfig().getString("votd.random-announcement-format");
         if (rawRandomFormat == null || rawRandomFormat.trim().isEmpty()) {
-            rawRandomFormat = plugin.getConfig().getString("votd.announcement-format", DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT);
+            rawRandomFormat = plugin.getConfig().getString("votd.announcement-format", defaultRandomAnnouncement);
         }
-        randomAnnouncementFormat = normalizeString(rawRandomFormat, DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT);
+        randomAnnouncementFormat = normalizeString(rawRandomFormat, defaultRandomAnnouncement);
 
         bibleVersion = trimmedVersion;
         apiUrlTemplate = trimmedTemplate;
@@ -135,20 +142,27 @@ public final class VotdService {
     }
 
     public void sendVerse(CommandSender sender) {
-        sendVerse(sender, messageFormat);
+        sendVerse(sender, messageFormat, true);
     }
 
     public void sendJoinVerse(CommandSender sender) {
         if (!joinEnabled) {
             return;
         }
-        sendVerse(sender, joinFormat);
+        sendVerse(sender, joinFormat, false);
     }
 
-    private void sendVerse(CommandSender sender, String template) {
+    private void sendVerse(CommandSender sender, String template, boolean logFailure) {
         getVerseAsync().whenComplete((verse, error) -> {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (error != null || verse == null) {
+                    if (logFailure && error != null) {
+                        plugin.getLogger().log(
+                            Level.FINE,
+                            "Failed to load verse of the day for command invocation.",
+                            error
+                        );
+                    }
                     audiences.sender(sender).sendMessage(
                         Component.text("Unable to load the verse of the day right now.").color(NamedTextColor.RED)
                     );
@@ -320,6 +334,13 @@ public final class VotdService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? fallback : trimmed;
+    }
+
+    private String getDefaultConfigString(String path, String fallback) {
+        if (plugin.getConfig().getDefaults() == null) {
+            return fallback;
+        }
+        return plugin.getConfig().getDefaults().getString(path, fallback);
     }
 
     private static String buildApiUrl(String template, String version) {
