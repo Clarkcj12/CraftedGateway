@@ -11,6 +11,7 @@ import net.sanctuary.servers.craftedgateway.command.RadioCommand;
 import net.sanctuary.servers.craftedgateway.command.VotdCommand;
 import net.sanctuary.servers.craftedgateway.listener.VotdJoinListener;
 import net.sanctuary.servers.craftedgateway.radio.RadioNowPlayingService;
+import net.sanctuary.servers.craftedgateway.tablist.TablistService;
 import net.sanctuary.servers.craftedgateway.votd.VotdService;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -22,6 +23,7 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
     private BukkitAudiences audiences;
     private VotdService votdService;
     private RadioNowPlayingService radioService;
+    private TablistService tablistService;
 
     @Override
     public void onEnable() {
@@ -35,6 +37,8 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         votdService.start();
         radioService = new RadioNowPlayingService(this, audiences);
         radioService.start();
+        tablistService = new TablistService(this, audiences, radioService);
+        tablistService.start();
         getServer().getPluginManager().registerEvents(new VotdJoinListener(votdService), this);
         commandManager = new BukkitCommandManager(this);
         commandManager.registerCommand(new GatewayCommand(this));
@@ -54,6 +58,10 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         if (radioService != null) {
             radioService.stop();
             radioService = null;
+        }
+        if (tablistService != null) {
+            tablistService.stop();
+            tablistService = null;
         }
         if (audiences != null) {
             sendConsoleStatus(version, Component.text("stopped").color(NamedTextColor.RED));
@@ -81,6 +89,9 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         }
         if (radioService != null) {
             radioService.reload();
+        }
+        if (tablistService != null) {
+            tablistService.reload();
         }
     }
 

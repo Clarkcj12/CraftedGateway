@@ -54,6 +54,7 @@ public final class RadioNowPlayingService {
     private volatile String messageFormat;
     private volatile int reconnectDelaySeconds;
     private volatile boolean announcementEnabled;
+    private volatile String lastSongText = "";
     private volatile WebSocket webSocket;
     private volatile BukkitTask reconnectTask;
     private volatile boolean connecting;
@@ -379,10 +380,15 @@ public final class RadioNowPlayingService {
             "url", urlValue
         );
         Bukkit.getScheduler().runTask(plugin, () -> audiences.all().sendMessage(message));
+        lastSongText = info.text();
     }
 
     public void setAnnouncementEnabled(boolean enabled) {
         this.announcementEnabled = enabled;
+    }
+
+    public String getLastSongText() {
+        return lastSongText;
     }
 
     private SongInfo parseSongInfo(JsonObject nowPlaying) {

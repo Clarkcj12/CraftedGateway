@@ -19,3 +19,13 @@ radio:
   url-label: "Listen Now"
   message-format: "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>"
   reconnect-delay-seconds: 10
+tablist:
+  enabled: true
+  update-interval-ticks: 40
+  time-format: "h:mm a"
+  header:
+    - "<gold>SanctuaryMC</gold>"
+    - "<gray>Time:</gray> <yellow>{time}</yellow>"
+  footer:
+    - "<gray>Now Playing:</gray> <yellow>{song}</yellow>"
+    - "<gray>Ping:</gray> <yellow>{ping}ms</yellow> <gray>{prefix}</gray>"
