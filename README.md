@@ -6,6 +6,7 @@ CraftedGateway is a lightweight Minecraft plugin for SanctuaryMC (Arclight / Spi
 - `/cg` status command with Adventure output.
 - Verse of the Day command and join message.
 - Random verse announcements on a configurable interval.
+- Live radio now-playing announcements via AzuraCast WebSocket.
 - MiniMessage formatting with legacy `&` fallback.
 - Configurable Bible version and API endpoints.
 
