@@ -15,4 +15,4 @@ if defined JAVA_HOME (
   set "JAVA_CMD=java"
 )
 
-"%JAVA_CMD%" %JAVA_OPTS% -jar "%WRAPPER_JAR%" %*
+"%JAVA_CMD%" %JAVA_OPTS% -classpath "%WRAPPER_JAR%" org.gradle.wrapper.GradleWrapperMain %*

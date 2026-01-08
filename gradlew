@@ -15,4 +15,4 @@ else
   JAVA_CMD=java
 fi
 
-exec "$JAVA_CMD" $JAVA_OPTS -jar "$WRAPPER_JAR" "$@"
+exec "$JAVA_CMD" $JAVA_OPTS -classpath "$WRAPPER_JAR" org.gradle.wrapper.GradleWrapperMain "$@"
