@@ -31,6 +31,7 @@ public final class RadioNowPlayingService {
     private static final String DEFAULT_STATION_SHORTCODE = "sanctuary_radio";
     private static final String NOW_PLAYING_PATH_PREFIX = "/api/live/nowplaying/";
     private static final String WEBSOCKET_PATH = "/api/live/nowplaying/websocket";
+    private static final String DEFAULT_URL_LABEL = "Listen Now";
     private static final String DEFAULT_MESSAGE_FORMAT =
         "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>";
     private static final int DEFAULT_RECONNECT_SECONDS = 10;
@@ -48,6 +49,7 @@ public final class RadioNowPlayingService {
     private volatile String websocketUrl;
     private volatile String stationUrl;
     private volatile String stationShortcode;
+    private volatile String urlLabel;
     private volatile String subscribeMessage;
     private volatile String messageFormat;
     private volatile int reconnectDelaySeconds;
@@ -65,6 +67,7 @@ public final class RadioNowPlayingService {
         this.websocketUrl = DEFAULT_WEBSOCKET_URL;
         this.stationUrl = DEFAULT_STATION_URL;
         this.stationShortcode = DEFAULT_STATION_SHORTCODE;
+        this.urlLabel = DEFAULT_URL_LABEL;
         this.subscribeMessage = buildSubscribeMessage(this.stationShortcode);
         this.messageFormat = DEFAULT_MESSAGE_FORMAT;
         this.reconnectDelaySeconds = DEFAULT_RECONNECT_SECONDS;
@@ -104,6 +107,10 @@ public final class RadioNowPlayingService {
         stationUrl = normalizeString(
             plugin.getConfig().getString("radio.station-url", DEFAULT_STATION_URL),
             DEFAULT_STATION_URL
+        );
+        urlLabel = normalizeString(
+            plugin.getConfig().getString("radio.url-label", DEFAULT_URL_LABEL),
+            DEFAULT_URL_LABEL
         );
         String configuredShortcode = normalizeOptional(
             plugin.getConfig().getString("radio.station-shortcode", null)
@@ -361,7 +368,8 @@ public final class RadioNowPlayingService {
         boolean legacyFormat = usesLegacyFormat(messageFormat);
         Object urlValue = stationUrl;
         if (!legacyFormat && stationUrl != null && !stationUrl.isBlank()) {
-            urlValue = Component.text(stationUrl).clickEvent(ClickEvent.openUrl(stationUrl));
+            String label = urlLabel == null || urlLabel.isBlank() ? stationUrl : urlLabel;
+            urlValue = Component.text(label).clickEvent(ClickEvent.openUrl(stationUrl));
         }
         Component message = MessageTemplate.render(
             messageFormat,
