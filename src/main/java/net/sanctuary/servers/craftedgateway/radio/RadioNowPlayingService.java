@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import org.bukkit.Bukkit;
@@ -357,12 +358,17 @@ public final class RadioNowPlayingService {
             return;
         }
 
+        boolean legacyFormat = usesLegacyFormat(messageFormat);
+        Object urlValue = stationUrl;
+        if (!legacyFormat && stationUrl != null && !stationUrl.isBlank()) {
+            urlValue = Component.text(stationUrl).clickEvent(ClickEvent.openUrl(stationUrl));
+        }
         Component message = MessageTemplate.render(
             messageFormat,
             "song", info.text(),
             "artist", info.artist(),
             "title", info.title(),
-            "url", stationUrl
+            "url", urlValue
         );
         Bukkit.getScheduler().runTask(plugin, () -> audiences.all().sendMessage(message));
     }
@@ -575,6 +581,13 @@ public final class RadioNowPlayingService {
             }
         }
         return "";
+    }
+
+    private static boolean usesLegacyFormat(String template) {
+        if (template == null) {
+            return false;
+        }
+        return template.indexOf('&') >= 0 && template.indexOf('<') < 0;
     }
 
     private record SongInfo(String key, String text, String artist, String title) {

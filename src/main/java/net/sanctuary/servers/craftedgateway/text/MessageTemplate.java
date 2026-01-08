@@ -6,6 +6,8 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
+import java.util.Objects;
+
 public final class MessageTemplate {
     private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
@@ -13,7 +15,7 @@ public final class MessageTemplate {
     private MessageTemplate() {
     }
 
-    public static Component render(String template, String... keyValues) {
+    public static Component render(String template, Object... keyValues) {
         if (template == null) {
             return Component.empty();
         }
@@ -26,15 +28,16 @@ public final class MessageTemplate {
 
         TagResolver.Builder resolver = TagResolver.builder();
         for (int i = 0; i < keyValues.length; i += 2) {
-            String key = keyValues[i];
+            String key = asKey(keyValues[i]);
             if (key == null) {
                 continue;
             }
-            String value = keyValues[i + 1];
-            if (value == null) {
-                value = "";
+            Object value = keyValues[i + 1];
+            if (value instanceof Component) {
+                resolver.resolver(Placeholder.component(key, (Component) value));
+            } else {
+                resolver.resolver(Placeholder.unparsed(key, Objects.toString(value, "")));
             }
-            resolver.resolver(Placeholder.unparsed(key, value));
         }
         String miniTemplate = applyMiniMessagePlaceholders(template, keyValues);
         return MINI_MESSAGE.deserialize(miniTemplate, resolver.build());
@@ -44,7 +47,7 @@ public final class MessageTemplate {
         return template.indexOf('&') >= 0 && template.indexOf('<') < 0;
     }
 
-    private static String applyMiniMessagePlaceholders(String template, String... keyValues) {
+    private static String applyMiniMessagePlaceholders(String template, Object... keyValues) {
         if (keyValues.length == 0 || template.indexOf('{') < 0) {
             return template;
         }
@@ -57,7 +60,7 @@ public final class MessageTemplate {
         });
     }
 
-    private static String applyLegacyPlaceholders(String template, String... keyValues) {
+    private static String applyLegacyPlaceholders(String template, Object... keyValues) {
         if (keyValues.length == 0 || template.indexOf('{') < 0) {
             return template;
         }
@@ -107,29 +110,38 @@ public final class MessageTemplate {
         return result.toString();
     }
 
-    private static boolean hasKey(String[] keyValues, String key) {
+    private static boolean hasKey(Object[] keyValues, String key) {
         return findKeyIndex(keyValues, key) >= 0;
     }
 
-    private static String findValue(String[] keyValues, String key) {
+    private static String findValue(Object[] keyValues, String key) {
         int index = findKeyIndex(keyValues, key);
         if (index < 0) {
             return null;
         }
-        String value = keyValues[index + 1];
-        return value == null ? "" : value;
+        return Objects.toString(keyValues[index + 1], "");
     }
 
-    private static int findKeyIndex(String[] keyValues, String key) {
+    private static int findKeyIndex(Object[] keyValues, String key) {
         if (key == null) {
             return -1;
         }
         for (int i = 0; i < keyValues.length; i += 2) {
-            String candidate = keyValues[i];
-            if (key.equals(candidate)) {
+            String candidate = asKey(keyValues[i]);
+            if (candidate != null && key.equals(candidate)) {
                 return i;
             }
         }
         return -1;
+    }
+
+    private static String asKey(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return value.toString();
     }
 }
