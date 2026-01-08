@@ -1,0 +1,11 @@
+votd:
+  announcement-enabled: true
+  announcement-interval-minutes: 10
+  bible-version: KJV
+  debug-logging: false
+  join-enabled: true
+  join-format: "<gold>[VOTD] <yellow><reference> (<version>) <white><text>"
+  message-format: "<gold>[VOTD] <yellow><reference> (<version>) <white><text>"
+  random-announcement-format: "<gold>[Verse] <yellow><reference> (<version>) <white><text>"
+  api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=daily&version=%s"
+  random-api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=random&version=%s"

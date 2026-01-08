@@ -1,0 +1,391 @@
+package net.sanctuary.servers.craftedgateway.votd;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import net.kyori.adventure.platform.bukkit.BukkitAudiences;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.scheduler.BukkitTask;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
+
+public final class VotdService {
+    private static final String DEFAULT_VERSION = "KJV";
+    private static final String DEFAULT_API_URL = "https://beta.ourmanna.com/api/v1/get/?format=json&order=daily&version=%s";
+    private static final String DEFAULT_RANDOM_API_URL = "https://beta.ourmanna.com/api/v1/get/?format=json&order=random&version=%s";
+    private static final String DEFAULT_MESSAGE_FORMAT = "&6[VOTD] &e{reference} ({version}) &f{text}";
+    private static final String DEFAULT_JOIN_FORMAT = "&6[VOTD] &e{reference} ({version}) &f{text}";
+    private static final String DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT = "&6[Verse] &e{reference} ({version}) &f{text}";
+    private static final boolean DEFAULT_DEBUG_LOGGING = false;
+    private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
+    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+
+    private final CraftedGatewayPlugin plugin;
+    private final BukkitAudiences audiences;
+    private final HttpClient httpClient;
+    private final Object fetchLock = new Object();
+    private final Object randomFetchLock = new Object();
+
+    private volatile VotdEntry cachedVerse;
+    private volatile LocalDate cachedDate;
+    private volatile String cachedVersion;
+    private volatile CompletableFuture<VotdEntry> inflightFetch;
+    private volatile VotdEntry cachedRandomVerse;
+    private volatile CompletableFuture<VotdEntry> inflightRandomFetch;
+
+    private volatile boolean announcementEnabled;
+    private volatile long announcementIntervalTicks;
+    private volatile boolean debugLogging;
+    private volatile boolean joinEnabled;
+    private volatile String bibleVersion;
+    private volatile String apiUrlTemplate;
+    private volatile String randomApiUrlTemplate;
+    private volatile String messageFormat;
+    private volatile String joinFormat;
+    private volatile String randomAnnouncementFormat;
+    private BukkitTask announcementTask;
+
+    public VotdService(CraftedGatewayPlugin plugin, BukkitAudiences audiences) {
+        this.plugin = plugin;
+        this.audiences = audiences;
+        this.httpClient = HttpClient.newBuilder()
+            .connectTimeout(HTTP_TIMEOUT)
+            .build();
+        this.bibleVersion = DEFAULT_VERSION;
+        this.apiUrlTemplate = DEFAULT_API_URL;
+        this.randomApiUrlTemplate = DEFAULT_RANDOM_API_URL;
+        this.cachedVersion = DEFAULT_VERSION;
+        this.messageFormat = DEFAULT_MESSAGE_FORMAT;
+        this.joinFormat = DEFAULT_JOIN_FORMAT;
+        this.randomAnnouncementFormat = DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT;
+    }
+
+    public void start() {
+        reload();
+    }
+
+    public void stop() {
+        cancelAnnouncements();
+        cachedVerse = null;
+        cachedDate = null;
+        cachedVersion = null;
+        inflightFetch = null;
+        cachedRandomVerse = null;
+        inflightRandomFetch = null;
+    }
+
+    public void reload() {
+        reloadFromConfig();
+        scheduleAnnouncements();
+    }
+
+    public void reloadFromConfig() {
+        String nextVersion = plugin.getConfig().getString("votd.bible-version", DEFAULT_VERSION);
+        String trimmedVersion = normalizeString(nextVersion, DEFAULT_VERSION);
+        String nextTemplate = plugin.getConfig().getString("votd.api-url", DEFAULT_API_URL);
+        String trimmedTemplate = normalizeString(nextTemplate, DEFAULT_API_URL);
+        String nextRandomTemplate = plugin.getConfig().getString("votd.random-api-url", DEFAULT_RANDOM_API_URL);
+        String trimmedRandomTemplate = normalizeString(nextRandomTemplate, DEFAULT_RANDOM_API_URL);
+        boolean versionChanged = !Objects.equals(bibleVersion, trimmedVersion);
+
+        if (versionChanged || !Objects.equals(apiUrlTemplate, trimmedTemplate)) {
+            cachedVerse = null;
+            cachedDate = null;
+        }
+        if (versionChanged || !Objects.equals(randomApiUrlTemplate, trimmedRandomTemplate)) {
+            cachedRandomVerse = null;
+        }
+
+        String defaultMessageFormat = getDefaultConfigString("votd.message-format", DEFAULT_MESSAGE_FORMAT);
+        messageFormat = normalizeString(
+            plugin.getConfig().getString("votd.message-format", defaultMessageFormat),
+            defaultMessageFormat
+        );
+        debugLogging = plugin.getConfig().getBoolean(
+            "votd.debug-logging",
+            getDefaultConfigBoolean("votd.debug-logging", DEFAULT_DEBUG_LOGGING)
+        );
+        joinEnabled = plugin.getConfig().getBoolean("votd.join-enabled", true);
+        String defaultJoinFormat = getDefaultConfigString("votd.join-format", DEFAULT_JOIN_FORMAT);
+        joinFormat = normalizeString(
+            plugin.getConfig().getString("votd.join-format", defaultJoinFormat),
+            defaultJoinFormat
+        );
+        String defaultRandomAnnouncement = getDefaultConfigString(
+            "votd.random-announcement-format",
+            DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT
+        );
+        String rawRandomFormat = plugin.getConfig().getString("votd.random-announcement-format");
+        if (rawRandomFormat == null || rawRandomFormat.trim().isEmpty()) {
+            rawRandomFormat = plugin.getConfig().getString("votd.announcement-format", defaultRandomAnnouncement);
+        }
+        randomAnnouncementFormat = normalizeString(rawRandomFormat, defaultRandomAnnouncement);
+
+        bibleVersion = trimmedVersion;
+        apiUrlTemplate = trimmedTemplate;
+        randomApiUrlTemplate = trimmedRandomTemplate;
+        cachedVersion = trimmedVersion;
+
+        int intervalMinutes = plugin.getConfig().getInt("votd.announcement-interval-minutes", 10);
+        boolean enabled = plugin.getConfig().getBoolean("votd.announcement-enabled", true);
+        announcementEnabled = enabled && intervalMinutes > 0;
+        announcementIntervalTicks = Math.max(1, intervalMinutes) * 20L * 60L;
+    }
+
+    public void sendVerse(CommandSender sender) {
+        sendVerse(sender, messageFormat, "command invocation", debugLogging);
+    }
+
+    public void sendJoinVerse(CommandSender sender) {
+        if (!joinEnabled) {
+            return;
+        }
+        sendVerse(sender, joinFormat, "player join", debugLogging);
+    }
+
+    private void sendVerse(CommandSender sender, String template, String context, boolean logFailure) {
+        getVerseAsync().whenComplete((verse, error) -> {
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (error != null || verse == null) {
+                    if (logFailure && error != null) {
+                        plugin.getLogger().log(
+                            Level.FINE,
+                            "Failed to load verse of the day for " + context + ".",
+                            error
+                        );
+                    }
+                    audiences.sender(sender).sendMessage(
+                        Component.text("Unable to load the verse of the day right now.").color(NamedTextColor.RED)
+                    );
+                    return;
+                }
+                audiences.sender(sender).sendMessage(formatMessage(verse, template));
+            });
+        });
+    }
+
+    private void scheduleAnnouncements() {
+        cancelAnnouncements();
+        if (!announcementEnabled || announcementIntervalTicks <= 0) {
+            return;
+        }
+        announcementTask = Bukkit.getScheduler().runTaskTimer(
+            plugin,
+            this::announceRandomVerse,
+            announcementIntervalTicks,
+            announcementIntervalTicks
+        );
+    }
+
+    private void cancelAnnouncements() {
+        if (announcementTask != null) {
+            announcementTask.cancel();
+            announcementTask = null;
+        }
+    }
+
+    private void announceRandomVerse() {
+        getRandomVerseAsync().whenComplete((verse, error) -> {
+            if (error != null || verse == null) {
+                if (error != null) {
+                    plugin.getLogger().warning("Random verse fetch failed: " + error.getMessage());
+                    if (debugLogging) {
+                        plugin.getLogger().log(Level.FINE, "Random verse fetch failed.", error);
+                    }
+                } else {
+                    plugin.getLogger().warning("Random verse fetch failed with no cached verse.");
+                }
+                return;
+            }
+            Bukkit.getScheduler().runTask(plugin, () -> audiences.all().sendMessage(formatMessage(verse, randomAnnouncementFormat)));
+        });
+    }
+
+    private CompletableFuture<VotdEntry> getVerseAsync() {
+        LocalDate today = LocalDate.now();
+        VotdEntry cached = cachedVerse;
+        if (cached != null && today.equals(cachedDate) && Objects.equals(cachedVersion, bibleVersion)) {
+            return CompletableFuture.completedFuture(cached);
+        }
+
+        synchronized (fetchLock) {
+            if (inflightFetch != null && !inflightFetch.isDone()) {
+                return inflightFetch;
+            }
+            CompletableFuture<VotdEntry> future = new CompletableFuture<>();
+            inflightFetch = future;
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                try {
+                    VotdEntry verse = fetchVerse(apiUrlTemplate);
+                    cacheVerse(verse, LocalDate.now());
+                    future.complete(verse);
+                } catch (Exception e) {
+                    VotdEntry fallback = cachedVerse;
+                    if (fallback != null) {
+                        future.complete(fallback);
+                    } else {
+                        future.completeExceptionally(e);
+                    }
+                } finally {
+                    synchronized (fetchLock) {
+                        inflightFetch = null;
+                    }
+                }
+            });
+            return future;
+        }
+    }
+
+    private CompletableFuture<VotdEntry> getRandomVerseAsync() {
+        synchronized (randomFetchLock) {
+            if (inflightRandomFetch != null && !inflightRandomFetch.isDone()) {
+                return inflightRandomFetch;
+            }
+            CompletableFuture<VotdEntry> future = new CompletableFuture<>();
+            inflightRandomFetch = future;
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                try {
+                    VotdEntry verse = fetchVerse(randomApiUrlTemplate);
+                    cacheRandomVerse(verse);
+                    future.complete(verse);
+                } catch (Exception e) {
+                    VotdEntry fallback = cachedRandomVerse;
+                    if (fallback != null) {
+                        future.complete(fallback);
+                    } else {
+                        future.completeExceptionally(e);
+                    }
+                } finally {
+                    synchronized (randomFetchLock) {
+                        inflightRandomFetch = null;
+                    }
+                }
+            });
+            return future;
+        }
+    }
+
+    private VotdEntry fetchVerse(String template) throws IOException, InterruptedException {
+        String url = buildApiUrl(template, bibleVersion);
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .timeout(HTTP_TIMEOUT)
+            .header("User-Agent", "CraftedGateway VOTD")
+            .GET()
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (response.statusCode() != 200) {
+            throw new IOException("Unexpected response status: " + response.statusCode());
+        }
+
+        return parseVerse(response.body());
+    }
+
+    private VotdEntry parseVerse(String json) throws IOException {
+        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+        JsonObject verseObject = root.has("verse") ? root.getAsJsonObject("verse") : null;
+        JsonObject details = verseObject != null && verseObject.has("details") ? verseObject.getAsJsonObject("details") : null;
+        if (details == null) {
+            throw new IOException("Missing verse details in API response.");
+        }
+        String text = getRequiredString(details, "text");
+        String reference = getRequiredString(details, "reference");
+        String version = details.has("version") ? details.get("version").getAsString() : bibleVersion;
+
+        String cleanedText = text.replace("\r", " ").replace("\n", " ").trim();
+        return new VotdEntry(reference, cleanedText, version);
+    }
+
+    private Component formatMessage(VotdEntry verse, String template) {
+        if (usesLegacyFormat(template)) {
+            return LEGACY_SERIALIZER.deserialize(applyLegacyPlaceholders(template, verse));
+        }
+        String miniTemplate = template
+            .replace("{reference}", "<reference>")
+            .replace("{version}", "<version>")
+            .replace("{text}", "<text>");
+        TagResolver resolver = TagResolver.builder()
+            .resolver(Placeholder.unparsed("reference", verse.reference()))
+            .resolver(Placeholder.unparsed("version", verse.version()))
+            .resolver(Placeholder.unparsed("text", verse.text()))
+            .build();
+        return MINI_MESSAGE.deserialize(miniTemplate, resolver);
+    }
+
+    private void cacheVerse(VotdEntry verse, LocalDate date) {
+        cachedVerse = verse;
+        cachedDate = date;
+        cachedVersion = bibleVersion;
+    }
+
+    private void cacheRandomVerse(VotdEntry verse) {
+        cachedRandomVerse = verse;
+    }
+
+    private static String getRequiredString(JsonObject object, String key) throws IOException {
+        if (!object.has(key) || object.get(key).isJsonNull()) {
+            throw new IOException("Missing field: " + key);
+        }
+        return object.get(key).getAsString();
+    }
+
+    private static String normalizeString(String value, String fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? fallback : trimmed;
+    }
+
+    private String getDefaultConfigString(String path, String fallback) {
+        if (plugin.getConfig().getDefaults() == null) {
+            return fallback;
+        }
+        return plugin.getConfig().getDefaults().getString(path, fallback);
+    }
+
+    private boolean getDefaultConfigBoolean(String path, boolean fallback) {
+        if (plugin.getConfig().getDefaults() == null) {
+            return fallback;
+        }
+        return plugin.getConfig().getDefaults().getBoolean(path, fallback);
+    }
+
+    private static String buildApiUrl(String template, String version) {
+        if (template.contains("%s")) {
+            return String.format(template, URLEncoder.encode(version, StandardCharsets.UTF_8));
+        }
+        return template;
+    }
+
+    private static boolean usesLegacyFormat(String template) {
+        return template.indexOf('&') >= 0 && template.indexOf('<') < 0;
+    }
+
+    private static String applyLegacyPlaceholders(String template, VotdEntry verse) {
+        return template
+            .replace("{reference}", verse.reference())
+            .replace("{version}", verse.version())
+            .replace("{text}", verse.text());
+    }
+}
