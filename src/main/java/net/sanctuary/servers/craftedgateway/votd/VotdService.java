@@ -5,6 +5,9 @@ import com.google.gson.JsonParser;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import org.bukkit.Bukkit;
@@ -31,8 +34,10 @@ public final class VotdService {
     private static final String DEFAULT_MESSAGE_FORMAT = "&6[VOTD] &e{reference} ({version}) &f{text}";
     private static final String DEFAULT_JOIN_FORMAT = "&6[VOTD] &e{reference} ({version}) &f{text}";
     private static final String DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT = "&6[Verse] &e{reference} ({version}) &f{text}";
+    private static final boolean DEFAULT_DEBUG_LOGGING = false;
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
 
     private final CraftedGatewayPlugin plugin;
     private final BukkitAudiences audiences;
@@ -49,6 +54,7 @@ public final class VotdService {
 
     private volatile boolean announcementEnabled;
     private volatile long announcementIntervalTicks;
+    private volatile boolean debugLogging;
     private volatile boolean joinEnabled;
     private volatile String bibleVersion;
     private volatile String apiUrlTemplate;
@@ -114,6 +120,10 @@ public final class VotdService {
             plugin.getConfig().getString("votd.message-format", defaultMessageFormat),
             defaultMessageFormat
         );
+        debugLogging = plugin.getConfig().getBoolean(
+            "votd.debug-logging",
+            getDefaultConfigBoolean("votd.debug-logging", DEFAULT_DEBUG_LOGGING)
+        );
         joinEnabled = plugin.getConfig().getBoolean("votd.join-enabled", true);
         String defaultJoinFormat = getDefaultConfigString("votd.join-format", DEFAULT_JOIN_FORMAT);
         joinFormat = normalizeString(
@@ -142,24 +152,24 @@ public final class VotdService {
     }
 
     public void sendVerse(CommandSender sender) {
-        sendVerse(sender, messageFormat, true);
+        sendVerse(sender, messageFormat, "command invocation", debugLogging);
     }
 
     public void sendJoinVerse(CommandSender sender) {
         if (!joinEnabled) {
             return;
         }
-        sendVerse(sender, joinFormat, false);
+        sendVerse(sender, joinFormat, "player join", debugLogging);
     }
 
-    private void sendVerse(CommandSender sender, String template, boolean logFailure) {
+    private void sendVerse(CommandSender sender, String template, String context, boolean logFailure) {
         getVerseAsync().whenComplete((verse, error) -> {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (error != null || verse == null) {
                     if (logFailure && error != null) {
                         plugin.getLogger().log(
                             Level.FINE,
-                            "Failed to load verse of the day for command invocation.",
+                            "Failed to load verse of the day for " + context + ".",
                             error
                         );
                     }
@@ -198,6 +208,9 @@ public final class VotdService {
             if (error != null || verse == null) {
                 if (error != null) {
                     plugin.getLogger().warning("Random verse fetch failed: " + error.getMessage());
+                    if (debugLogging) {
+                        plugin.getLogger().log(Level.FINE, "Random verse fetch failed.", error);
+                    }
                 } else {
                     plugin.getLogger().warning("Random verse fetch failed with no cached verse.");
                 }
@@ -304,11 +317,19 @@ public final class VotdService {
     }
 
     private Component formatMessage(VotdEntry verse, String template) {
-        String resolved = template
-            .replace("{reference}", verse.reference())
-            .replace("{version}", verse.version())
-            .replace("{text}", verse.text());
-        return LEGACY_SERIALIZER.deserialize(resolved);
+        if (usesLegacyFormat(template)) {
+            return LEGACY_SERIALIZER.deserialize(applyLegacyPlaceholders(template, verse));
+        }
+        String miniTemplate = template
+            .replace("{reference}", "<reference>")
+            .replace("{version}", "<version>")
+            .replace("{text}", "<text>");
+        TagResolver resolver = TagResolver.builder()
+            .resolver(Placeholder.unparsed("reference", verse.reference()))
+            .resolver(Placeholder.unparsed("version", verse.version()))
+            .resolver(Placeholder.unparsed("text", verse.text()))
+            .build();
+        return MINI_MESSAGE.deserialize(miniTemplate, resolver);
     }
 
     private void cacheVerse(VotdEntry verse, LocalDate date) {
@@ -343,10 +364,28 @@ public final class VotdService {
         return plugin.getConfig().getDefaults().getString(path, fallback);
     }
 
+    private boolean getDefaultConfigBoolean(String path, boolean fallback) {
+        if (plugin.getConfig().getDefaults() == null) {
+            return fallback;
+        }
+        return plugin.getConfig().getDefaults().getBoolean(path, fallback);
+    }
+
     private static String buildApiUrl(String template, String version) {
         if (template.contains("%s")) {
             return String.format(template, URLEncoder.encode(version, StandardCharsets.UTF_8));
         }
         return template;
+    }
+
+    private static boolean usesLegacyFormat(String template) {
+        return template.indexOf('&') >= 0 && template.indexOf('<') < 0;
+    }
+
+    private static String applyLegacyPlaceholders(String template, VotdEntry verse) {
+        return template
+            .replace("{reference}", verse.reference())
+            .replace("{version}", verse.version())
+            .replace("{text}", verse.text());
     }
 }
