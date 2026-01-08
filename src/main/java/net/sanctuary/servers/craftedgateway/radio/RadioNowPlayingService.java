@@ -1,5 +1,6 @@
 package net.sanctuary.servers.craftedgateway.radio;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -14,6 +15,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -22,9 +24,10 @@ import java.util.logging.Level;
 
 public final class RadioNowPlayingService {
     private static final String DEFAULT_WEBSOCKET_URL =
-        "wss://radio.sanctuaryunited.net/api/live/nowplaying/sanctuary_radio";
+        "wss://radio.sanctuaryunited.net/api/live/nowplaying/websocket";
     private static final String DEFAULT_STATION_URL =
         "https://radio.sanctuaryunited.net/public/sanctuary_radio";
+    private static final String DEFAULT_STATION_SHORTCODE = "sanctuary_radio";
     private static final String DEFAULT_MESSAGE_FORMAT =
         "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>";
     private static final int DEFAULT_RECONNECT_SECONDS = 10;
@@ -40,6 +43,8 @@ public final class RadioNowPlayingService {
     private volatile boolean debugLogging;
     private volatile String websocketUrl;
     private volatile String stationUrl;
+    private volatile String stationShortcode;
+    private volatile String subscribeMessage;
     private volatile String messageFormat;
     private volatile int reconnectDelaySeconds;
     private volatile WebSocket webSocket;
@@ -54,6 +59,8 @@ public final class RadioNowPlayingService {
             .build();
         this.websocketUrl = DEFAULT_WEBSOCKET_URL;
         this.stationUrl = DEFAULT_STATION_URL;
+        this.stationShortcode = DEFAULT_STATION_SHORTCODE;
+        this.subscribeMessage = buildSubscribeMessage(this.stationShortcode);
         this.messageFormat = DEFAULT_MESSAGE_FORMAT;
         this.reconnectDelaySeconds = DEFAULT_RECONNECT_SECONDS;
     }
@@ -85,6 +92,12 @@ public final class RadioNowPlayingService {
             plugin.getConfig().getString("radio.station-url", DEFAULT_STATION_URL),
             DEFAULT_STATION_URL
         );
+        stationShortcode = resolveStationShortcode(
+            plugin.getConfig().getString("radio.station-shortcode", null),
+            websocketUrl,
+            stationUrl
+        );
+        subscribeMessage = buildSubscribeMessage(stationShortcode);
         messageFormat = normalizeString(
             plugin.getConfig().getString("radio.message-format", DEFAULT_MESSAGE_FORMAT),
             DEFAULT_MESSAGE_FORMAT
@@ -107,6 +120,11 @@ public final class RadioNowPlayingService {
             enabled = false;
             return;
         }
+        if (stationShortcode == null || stationShortcode.isBlank()) {
+            plugin.getLogger().warning("Radio station shortcode is not configured; disabling radio updates.");
+            enabled = false;
+            return;
+        }
         connect();
     }
 
@@ -122,8 +140,13 @@ public final class RadioNowPlayingService {
             .connectTimeout(CONNECT_TIMEOUT)
             .buildAsync(URI.create(websocketUrl), new RadioWebSocketListener())
             .whenComplete((socket, error) -> {
+                boolean connected = false;
                 synchronized (connectionLock) {
                     connecting = false;
+                    if (error == null && enabled && webSocket == null) {
+                        webSocket = socket;
+                        connected = true;
+                    }
                 }
                 if (error != null) {
                     if (debugLogging) {
@@ -134,7 +157,16 @@ public final class RadioNowPlayingService {
                     scheduleReconnect();
                     return;
                 }
-                webSocket = socket;
+                if (!connected) {
+                    if (socket != null) {
+                        try {
+                            socket.sendClose(WebSocket.NORMAL_CLOSURE, "shutdown");
+                        } catch (Exception ignored) {
+                            socket.abort();
+                        }
+                    }
+                    return;
+                }
                 if (debugLogging) {
                     plugin.getLogger().info("Radio websocket connected.");
                 }
@@ -169,21 +201,121 @@ public final class RadioNowPlayingService {
             }
             long delayTicks = reconnectDelaySeconds * 20L;
             reconnectTask = Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
-                reconnectTask = null;
+                synchronized (connectionLock) {
+                    reconnectTask = null;
+                }
                 connect();
             }, delayTicks);
         }
     }
 
     private void cancelReconnect() {
-        BukkitTask task = reconnectTask;
-        if (task != null) {
-            task.cancel();
+        synchronized (connectionLock) {
+            if (reconnectTask != null) {
+                reconnectTask.cancel();
+                reconnectTask = null;
+            }
         }
-        reconnectTask = null;
     }
 
     private void handleMessage(String payload) {
+        if (payload == null) {
+            return;
+        }
+        String trimmed = payload.trim();
+        if (trimmed.isEmpty() || "{}".equals(trimmed)) {
+            return;
+        }
+        JsonElement element;
+        try {
+            element = JsonParser.parseString(trimmed);
+        } catch (Exception e) {
+            if (debugLogging) {
+                plugin.getLogger().log(Level.FINE, "Failed to parse radio websocket message.", e);
+            }
+            return;
+        }
+        if (!element.isJsonObject()) {
+            return;
+        }
+        JsonObject root = element.getAsJsonObject();
+        if (handleConnectPayload(root)) {
+            return;
+        }
+        if (handlePubPayload(root)) {
+            return;
+        }
+        handleNowPlayingPayload(root);
+    }
+
+    private boolean handleConnectPayload(JsonObject root) {
+        JsonObject connect = getObject(root, "connect");
+        if (connect == null) {
+            return false;
+        }
+        JsonArray data = getArray(connect, "data");
+        if (data != null) {
+            handleConnectDataArray(data);
+            return true;
+        }
+        JsonObject subs = getObject(connect, "subs");
+        if (subs == null) {
+            return true;
+        }
+        for (Map.Entry<String, JsonElement> entry : subs.entrySet()) {
+            JsonObject sub = asObject(entry.getValue());
+            if (sub == null) {
+                continue;
+            }
+            JsonArray publications = getArray(sub, "publications");
+            if (publications != null) {
+                handleConnectDataArray(publications);
+            }
+        }
+        return true;
+    }
+
+    private void handleConnectDataArray(JsonArray data) {
+        for (JsonElement element : data) {
+            JsonObject payload = asObject(element);
+            if (payload != null) {
+                handleSsePayload(payload);
+            }
+        }
+    }
+
+    private boolean handlePubPayload(JsonObject root) {
+        JsonObject pub = getObject(root, "pub");
+        if (pub == null) {
+            return false;
+        }
+        JsonObject data = getObject(pub, "data");
+        if (data == null) {
+            return true;
+        }
+        JsonObject np = getObject(data, "np");
+        if (np != null) {
+            handleNowPlayingPayload(np);
+        } else {
+            handleNowPlayingPayload(data);
+        }
+        return true;
+    }
+
+    private void handleSsePayload(JsonObject payload) {
+        JsonObject data = getObject(payload, "data");
+        if (data == null) {
+            return;
+        }
+        JsonObject np = getObject(data, "np");
+        if (np != null) {
+            handleNowPlayingPayload(np);
+        } else {
+            handleNowPlayingPayload(data);
+        }
+    }
+
+    private void handleNowPlayingPayload(JsonObject payload) {
         SongInfo info = parseSongInfo(payload);
         if (info == null || info.text().isBlank()) {
             return;
@@ -204,23 +336,30 @@ public final class RadioNowPlayingService {
         Bukkit.getScheduler().runTask(plugin, () -> audiences.all().sendMessage(message));
     }
 
-    private SongInfo parseSongInfo(String payload) {
+    private SongInfo parseSongInfo(JsonObject root) {
+        if (root == null) {
+            return null;
+        }
         try {
-            JsonElement element = JsonParser.parseString(payload);
-            if (!element.isJsonObject()) {
-                return null;
-            }
-            JsonObject root = element.getAsJsonObject();
             JsonObject data = getObject(root, "data");
-            if (data == null) {
-                data = root;
+            if (data != null) {
+                JsonObject np = getObject(data, "np");
+                if (np != null) {
+                    root = np;
+                } else {
+                    root = data;
+                }
             }
-            JsonObject nowPlaying = getObject(data, "now_playing");
-            if (nowPlaying == null) {
-                nowPlaying = getObject(data, "current_song");
+            JsonObject np = getObject(root, "np");
+            if (np != null) {
+                root = np;
             }
+            JsonObject nowPlaying = getObject(root, "now_playing");
             if (nowPlaying == null) {
-                return null;
+                nowPlaying = getObject(root, "current_song");
+                if (nowPlaying == null) {
+                    nowPlaying = root;
+                }
             }
             JsonObject song = getObject(nowPlaying, "song");
             if (song == null) {
@@ -259,6 +398,13 @@ public final class RadioNowPlayingService {
         }
     }
 
+    private static JsonObject asObject(JsonElement element) {
+        if (element == null || !element.isJsonObject()) {
+            return null;
+        }
+        return element.getAsJsonObject();
+    }
+
     private static JsonObject getObject(JsonObject parent, String key) {
         if (parent == null || !parent.has(key)) {
             return null;
@@ -268,6 +414,17 @@ public final class RadioNowPlayingService {
             return null;
         }
         return element.getAsJsonObject();
+    }
+
+    private static JsonArray getArray(JsonObject parent, String key) {
+        if (parent == null || !parent.has(key)) {
+            return null;
+        }
+        JsonElement element = parent.get(key);
+        if (element == null || !element.isJsonArray()) {
+            return null;
+        }
+        return element.getAsJsonArray();
     }
 
     private static String getString(JsonObject parent, String key) {
@@ -297,6 +454,65 @@ public final class RadioNowPlayingService {
         return trimmed.isEmpty() ? fallback : trimmed;
     }
 
+    private static String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String resolveStationShortcode(String configured, String websocketUrl, String stationUrl) {
+        String shortcode = normalizeOptional(configured);
+        if (shortcode != null) {
+            return shortcode;
+        }
+        shortcode = extractStationShortcode(websocketUrl);
+        if (shortcode != null) {
+            return shortcode;
+        }
+        shortcode = extractStationShortcode(stationUrl);
+        return shortcode == null ? DEFAULT_STATION_SHORTCODE : shortcode;
+    }
+
+    private static String extractStationShortcode(String url) {
+        String normalized = normalizeOptional(url);
+        if (normalized == null) {
+            return null;
+        }
+        int queryIndex = normalized.indexOf('?');
+        String trimmed = queryIndex >= 0 ? normalized.substring(0, queryIndex) : normalized;
+        int end = trimmed.length();
+        while (end > 0 && trimmed.charAt(end - 1) == '/') {
+            end--;
+        }
+        if (end == 0) {
+            return null;
+        }
+        int start = trimmed.lastIndexOf('/', end - 1);
+        if (start < 0 || start == end - 1) {
+            return null;
+        }
+        String segment = trimmed.substring(start + 1, end);
+        if (segment.equalsIgnoreCase("websocket") || segment.equalsIgnoreCase("sse")) {
+            return null;
+        }
+        return segment.isEmpty() ? null : segment;
+    }
+
+    private static String buildSubscribeMessage(String stationShortcode) {
+        if (stationShortcode == null || stationShortcode.isBlank()) {
+            return null;
+        }
+        JsonObject root = new JsonObject();
+        JsonObject subs = new JsonObject();
+        JsonObject station = new JsonObject();
+        station.addProperty("recover", true);
+        subs.add("station:" + stationShortcode, station);
+        root.add("subs", subs);
+        return root.toString();
+    }
+
     private static String firstNonEmpty(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
@@ -310,19 +526,29 @@ public final class RadioNowPlayingService {
     }
 
     private final class RadioWebSocketListener implements WebSocket.Listener {
+        private final Object bufferLock = new Object();
         private final StringBuilder buffer = new StringBuilder(512);
 
         @Override
         public void onOpen(WebSocket webSocket) {
+            String connectMessage = subscribeMessage;
+            if (connectMessage != null) {
+                webSocket.sendText(connectMessage, true);
+            }
             webSocket.request(1);
         }
 
         @Override
         public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-            buffer.append(data);
-            if (last) {
-                String message = buffer.toString();
-                buffer.setLength(0);
+            String message = null;
+            synchronized (bufferLock) {
+                buffer.append(data);
+                if (last) {
+                    message = buffer.toString();
+                    buffer.setLength(0);
+                }
+            }
+            if (message != null) {
                 handleMessage(message);
             }
             webSocket.request(1);
