@@ -1,1 +1,9 @@
 rootProject.name = 'CraftedGateway'
+
+toolchainManagement {
+    jvm {
+        javaRepositories {
+            repository('adoptium')
+        }
+    }
+}
