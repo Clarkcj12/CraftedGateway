@@ -360,10 +360,62 @@ public final class VotdService {
     }
 
     private static String buildApiUrl(String template, String version) {
-        if (template.contains("%s")) {
-            return String.format(template, URLEncoder.encode(version, StandardCharsets.UTF_8));
+        String safeTemplate = template == null ? "" : template;
+        String encodedVersion = URLEncoder.encode(version, StandardCharsets.UTF_8);
+        if (safeTemplate.contains("%s")) {
+            return safeTemplate.replace("%s", encodedVersion);
         }
-        return template;
+        return upsertQueryParam(safeTemplate, "version", encodedVersion);
+    }
+
+    private static String upsertQueryParam(String url, String key, String value) {
+        int queryIndex = url.indexOf('?');
+        if (queryIndex < 0) {
+            return url + "?" + key + "=" + value;
+        }
+        String base = url.substring(0, queryIndex + 1);
+        String query = url.substring(queryIndex + 1);
+        if (query.isEmpty()) {
+            return base + key + "=" + value;
+        }
+        int paramIndex = findQueryParamIndex(query, key);
+        if (paramIndex < 0) {
+            return url + "&" + key + "=" + value;
+        }
+        int valueStart = paramIndex + key.length();
+        if (valueStart < query.length() && query.charAt(valueStart) == '=') {
+            valueStart++;
+            int valueEnd = query.indexOf('&', valueStart);
+            if (valueEnd < 0) {
+                valueEnd = query.length();
+            }
+            return base + query.substring(0, valueStart) + value + query.substring(valueEnd);
+        }
+        int valueEnd = valueStart;
+        if (valueEnd < query.length() && query.charAt(valueEnd) == '&') {
+            return base + query.substring(0, valueEnd) + "=" + value + query.substring(valueEnd);
+        }
+        return base + query.substring(0, valueStart) + "=" + value + query.substring(valueStart);
+    }
+
+    private static int findQueryParamIndex(String query, String key) {
+        int index = 0;
+        while (index <= query.length() - key.length()) {
+            int match = query.indexOf(key, index);
+            if (match < 0) {
+                return -1;
+            }
+            boolean startOk = match == 0 || query.charAt(match - 1) == '&';
+            int after = match + key.length();
+            boolean endOk = after == query.length()
+                || query.charAt(after) == '='
+                || query.charAt(after) == '&';
+            if (startOk && endOk) {
+                return match;
+            }
+            index = match + key.length();
+        }
+        return -1;
     }
 
 }

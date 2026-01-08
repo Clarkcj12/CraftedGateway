@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.sanctuary.servers.craftedgateway.command.GatewayCommand;
+import net.sanctuary.servers.craftedgateway.command.RadioCommand;
 import net.sanctuary.servers.craftedgateway.command.VotdCommand;
 import net.sanctuary.servers.craftedgateway.listener.VotdJoinListener;
 import net.sanctuary.servers.craftedgateway.radio.RadioNowPlayingService;
@@ -25,6 +26,7 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        reloadAndUpdateConfig();
         audiences = BukkitAudiences.create(this);
         String version = getDescription().getVersion();
         sendConsoleStatus(version, Component.text("starting").color(NamedTextColor.YELLOW));
@@ -37,6 +39,7 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         commandManager = new BukkitCommandManager(this);
         commandManager.registerCommand(new GatewayCommand(this));
         commandManager.registerCommand(new VotdCommand(this, votdService));
+        commandManager.registerCommand(new RadioCommand(this, radioService));
         sendConsoleStatus(version, Component.text("ready").color(NamedTextColor.GREEN));
         getLogger().info("CraftedGateway v" + version + " is ready.");
     }
@@ -63,6 +66,22 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
 
     public BukkitAudiences audiences() {
         return audiences;
+    }
+
+    public void reloadAndUpdateConfig() {
+        reloadConfig();
+        getConfig().options().copyDefaults(true);
+        saveConfig();
+    }
+
+    public void reloadAll() {
+        reloadAndUpdateConfig();
+        if (votdService != null) {
+            votdService.reload();
+        }
+        if (radioService != null) {
+            radioService.reload();
+        }
     }
 
     private void sendConsoleStatus(String version, Component state) {

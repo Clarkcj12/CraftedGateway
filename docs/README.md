@@ -2,10 +2,23 @@
 
 ## Commands
 - `/cg` - show plugin status.
+- `/cg reload` - reload all configuration.
+- `/radio reload` - reload radio configuration.
+- `/radio announcement enable` - enable radio now playing announcements.
+- `/radio announcement disable` - disable radio now playing announcements.
 - `/votd` - show the verse of the day.
 - `/votd reload` - reload VOTD configuration.
+- `/votd join enable` - enable VOTD join messages.
+- `/votd join disable` - disable VOTD join messages.
+- `/votd announcement enable` - enable scheduled VOTD announcements.
+- `/votd announcement disable` - disable scheduled VOTD announcements.
 
 ## Permissions
+- `craftedgateway.reload` (default: op)
+- `craftedgateway.radio.announce` (default: op)
+- `craftedgateway.radio.reload` (default: op)
+- `craftedgateway.votd.announce` (default: op)
+- `craftedgateway.votd.join` (default: op)
 - `craftedgateway.votd.reload` (default: op)
 
 ## VOTD Behavior
@@ -17,6 +30,8 @@
 - Connects to AzuraCast WebSocket updates.
 - Broadcasts the current song when it changes.
 - Includes the station URL in the announcement.
+- Subscribes using the AzuraCast station shortcode.
+- The shortcode is the station URL slug (for example `/public/<shortcode>` in AzuraCast).
 - Restart the server to apply radio configuration changes.
 
 ## Configuration
@@ -35,10 +50,12 @@ votd:
   api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=daily&version=%s"
   random-api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=random&version=%s"
 radio:
-  enabled: false
+  enabled: true
   debug-logging: false
-  websocket-url: "wss://radio.sanctuaryunited.net/api/live/nowplaying/sanctuary_radio"
+  websocket-url: "wss://radio.sanctuaryunited.net/api/live/nowplaying/websocket"
+  station-shortcode: "sanctuary_radio"
   station-url: "https://radio.sanctuaryunited.net/public/sanctuary_radio"
+  announcement-enabled: true
   message-format: "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>"
   reconnect-delay-seconds: 10
 ```
