@@ -167,6 +167,7 @@ public final class RadioNowPlayingService {
                     }
                     return;
                 }
+                sendSubscribe(socket);
                 if (debugLogging) {
                     plugin.getLogger().info("Radio websocket connected.");
                 }
@@ -189,6 +190,23 @@ public final class RadioNowPlayingService {
         synchronized (connectionLock) {
             webSocket = null;
         }
+    }
+
+    private boolean isActiveSocket(WebSocket socket) {
+        synchronized (connectionLock) {
+            return enabled && webSocket == socket;
+        }
+    }
+
+    private void sendSubscribe(WebSocket socket) {
+        String connectMessage = subscribeMessage;
+        if (connectMessage == null || socket == null) {
+            return;
+        }
+        if (!isActiveSocket(socket)) {
+            return;
+        }
+        socket.sendText(connectMessage, true);
     }
 
     private void scheduleReconnect() {
@@ -289,34 +307,17 @@ public final class RadioNowPlayingService {
         if (pub == null) {
             return false;
         }
-        JsonObject data = getObject(pub, "data");
-        if (data == null) {
-            return true;
-        }
-        JsonObject np = getObject(data, "np");
-        if (np != null) {
-            handleNowPlayingPayload(np);
-        } else {
-            handleNowPlayingPayload(data);
-        }
+        handleNowPlayingPayload(pub);
         return true;
     }
 
     private void handleSsePayload(JsonObject payload) {
-        JsonObject data = getObject(payload, "data");
-        if (data == null) {
-            return;
-        }
-        JsonObject np = getObject(data, "np");
-        if (np != null) {
-            handleNowPlayingPayload(np);
-        } else {
-            handleNowPlayingPayload(data);
-        }
+        handleNowPlayingPayload(payload);
     }
 
     private void handleNowPlayingPayload(JsonObject payload) {
-        SongInfo info = parseSongInfo(payload);
+        JsonObject nowPlaying = extractNowPlayingPayload(payload);
+        SongInfo info = parseSongInfo(nowPlaying);
         if (info == null || info.text().isBlank()) {
             return;
         }
@@ -336,30 +337,10 @@ public final class RadioNowPlayingService {
         Bukkit.getScheduler().runTask(plugin, () -> audiences.all().sendMessage(message));
     }
 
-    private SongInfo parseSongInfo(JsonObject root) {
-        if (root == null) {
-            return null;
-        }
+    private SongInfo parseSongInfo(JsonObject nowPlaying) {
         try {
-            JsonObject data = getObject(root, "data");
-            if (data != null) {
-                JsonObject np = getObject(data, "np");
-                if (np != null) {
-                    root = np;
-                } else {
-                    root = data;
-                }
-            }
-            JsonObject np = getObject(root, "np");
-            if (np != null) {
-                root = np;
-            }
-            JsonObject nowPlaying = getObject(root, "now_playing");
             if (nowPlaying == null) {
-                nowPlaying = getObject(root, "current_song");
-                if (nowPlaying == null) {
-                    nowPlaying = root;
-                }
+                return null;
             }
             JsonObject song = getObject(nowPlaying, "song");
             if (song == null) {
@@ -396,6 +377,27 @@ public final class RadioNowPlayingService {
             }
             return null;
         }
+    }
+
+    private JsonObject extractNowPlayingPayload(JsonObject root) {
+        if (root == null) {
+            return null;
+        }
+        JsonObject candidate = root;
+        JsonObject data = getObject(candidate, "data");
+        if (data != null) {
+            candidate = data;
+        }
+        JsonObject np = getObject(candidate, "np");
+        if (np != null) {
+            candidate = np;
+        }
+        JsonObject nowPlaying = getObject(candidate, "now_playing");
+        if (nowPlaying != null) {
+            return nowPlaying;
+        }
+        JsonObject currentSong = getObject(candidate, "current_song");
+        return currentSong != null ? currentSong : candidate;
     }
 
     private static JsonObject asObject(JsonElement element) {
@@ -531,10 +533,6 @@ public final class RadioNowPlayingService {
 
         @Override
         public void onOpen(WebSocket webSocket) {
-            String connectMessage = subscribeMessage;
-            if (connectMessage != null) {
-                webSocket.sendText(connectMessage, true);
-            }
             webSocket.request(1);
         }
 
