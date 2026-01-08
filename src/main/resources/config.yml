@@ -9,3 +9,10 @@ votd:
   random-announcement-format: "<gold>[Verse] <yellow><reference> (<version>) <white><text>"
   api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=daily&version=%s"
   random-api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=random&version=%s"
+radio:
+  enabled: false
+  debug-logging: false
+  websocket-url: "wss://radio.sanctuaryunited.net/api/live/nowplaying/sanctuary_radio"
+  station-url: "https://radio.sanctuaryunited.net/public/sanctuary_radio"
+  message-format: "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>"
+  reconnect-delay-seconds: 10

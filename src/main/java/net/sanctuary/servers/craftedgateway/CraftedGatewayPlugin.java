@@ -9,6 +9,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.sanctuary.servers.craftedgateway.command.GatewayCommand;
 import net.sanctuary.servers.craftedgateway.command.VotdCommand;
 import net.sanctuary.servers.craftedgateway.listener.VotdJoinListener;
+import net.sanctuary.servers.craftedgateway.radio.RadioNowPlayingService;
 import net.sanctuary.servers.craftedgateway.votd.VotdService;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -19,6 +20,7 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
     private BukkitCommandManager commandManager;
     private BukkitAudiences audiences;
     private VotdService votdService;
+    private RadioNowPlayingService radioService;
 
     @Override
     public void onEnable() {
@@ -29,6 +31,8 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         getLogger().info("CraftedGateway v" + version + " is starting...");
         votdService = new VotdService(this, audiences);
         votdService.start();
+        radioService = new RadioNowPlayingService(this, audiences);
+        radioService.start();
         getServer().getPluginManager().registerEvents(new VotdJoinListener(votdService), this);
         commandManager = new BukkitCommandManager(this);
         commandManager.registerCommand(new GatewayCommand(this));
@@ -43,6 +47,10 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         if (votdService != null) {
             votdService.stop();
             votdService = null;
+        }
+        if (radioService != null) {
+            radioService.stop();
+            radioService = null;
         }
         if (audiences != null) {
             sendConsoleStatus(version, Component.text("stopped").color(NamedTextColor.RED));

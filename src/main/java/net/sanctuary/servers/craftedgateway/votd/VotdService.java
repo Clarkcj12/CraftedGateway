@@ -5,11 +5,8 @@ import com.google.gson.JsonParser;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
+import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.scheduler.BukkitTask;
@@ -36,8 +33,6 @@ public final class VotdService {
     private static final String DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT = "&6[Verse] &e{reference} ({version}) &f{text}";
     private static final boolean DEFAULT_DEBUG_LOGGING = false;
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
-    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
-    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
 
     private final CraftedGatewayPlugin plugin;
     private final BukkitAudiences audiences;
@@ -317,19 +312,12 @@ public final class VotdService {
     }
 
     private Component formatMessage(VotdEntry verse, String template) {
-        if (usesLegacyFormat(template)) {
-            return LEGACY_SERIALIZER.deserialize(applyLegacyPlaceholders(template, verse));
-        }
-        String miniTemplate = template
-            .replace("{reference}", "<reference>")
-            .replace("{version}", "<version>")
-            .replace("{text}", "<text>");
-        TagResolver resolver = TagResolver.builder()
-            .resolver(Placeholder.unparsed("reference", verse.reference()))
-            .resolver(Placeholder.unparsed("version", verse.version()))
-            .resolver(Placeholder.unparsed("text", verse.text()))
-            .build();
-        return MINI_MESSAGE.deserialize(miniTemplate, resolver);
+        return MessageTemplate.render(
+            template,
+            "reference", verse.reference(),
+            "version", verse.version(),
+            "text", verse.text()
+        );
     }
 
     private void cacheVerse(VotdEntry verse, LocalDate date) {
@@ -378,14 +366,4 @@ public final class VotdService {
         return template;
     }
 
-    private static boolean usesLegacyFormat(String template) {
-        return template.indexOf('&') >= 0 && template.indexOf('<') < 0;
-    }
-
-    private static String applyLegacyPlaceholders(String template, VotdEntry verse) {
-        return template
-            .replace("{reference}", verse.reference())
-            .replace("{version}", verse.version())
-            .replace("{text}", verse.text());
-    }
 }
