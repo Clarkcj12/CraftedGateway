@@ -40,6 +40,7 @@ dependencies {
     implementation 'net.kyori:adventure-platform-bukkit:4.4.1'
     implementation 'co.aikar:acf-bukkit:0.5.1-SNAPSHOT'
     shade 'com.google.code.gson:gson:2.13.2'
+    compileOnly 'net.luckperms:api:5.4'
 }
 
 tasks.withType(JavaCompile).configureEach {
