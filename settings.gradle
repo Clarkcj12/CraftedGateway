@@ -1,9 +1,5 @@
-rootProject.name = 'CraftedGateway'
-
-toolchainManagement {
-    jvm {
-        javaRepositories {
-            repository('adoptium')
-        }
-    }
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
+
+rootProject.name = 'CraftedGateway'
