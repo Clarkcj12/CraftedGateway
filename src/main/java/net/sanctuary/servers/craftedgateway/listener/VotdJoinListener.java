@@ -14,6 +14,6 @@ public final class VotdJoinListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        votdService.sendVerse(event.getPlayer());
+        votdService.sendJoinVerse(event.getPlayer());
     }
 }

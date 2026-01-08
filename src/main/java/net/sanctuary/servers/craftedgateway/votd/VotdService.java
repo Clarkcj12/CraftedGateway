@@ -28,7 +28,8 @@ public final class VotdService {
     private static final String DEFAULT_API_URL = "https://beta.ourmanna.com/api/v1/get/?format=json&order=daily&version=%s";
     private static final String DEFAULT_RANDOM_API_URL = "https://beta.ourmanna.com/api/v1/get/?format=json&order=random&version=%s";
     private static final String DEFAULT_MESSAGE_FORMAT = "&6[VOTD] &e{reference} ({version}) &f{text}";
-    private static final String DEFAULT_ANNOUNCEMENT_FORMAT = "&6[VOTD] &e{reference} ({version}) &f{text}";
+    private static final String DEFAULT_JOIN_FORMAT = "&6[VOTD] &e{reference} ({version}) &f{text}";
+    private static final String DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT = "&6[Verse] &e{reference} ({version}) &f{text}";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
 
@@ -47,11 +48,13 @@ public final class VotdService {
 
     private volatile boolean announcementEnabled;
     private volatile long announcementIntervalTicks;
+    private volatile boolean joinEnabled;
     private volatile String bibleVersion;
     private volatile String apiUrlTemplate;
     private volatile String randomApiUrlTemplate;
     private volatile String messageFormat;
-    private volatile String announcementFormat;
+    private volatile String joinFormat;
+    private volatile String randomAnnouncementFormat;
     private BukkitTask announcementTask;
 
     public VotdService(CraftedGatewayPlugin plugin, BukkitAudiences audiences) {
@@ -65,7 +68,8 @@ public final class VotdService {
         this.randomApiUrlTemplate = DEFAULT_RANDOM_API_URL;
         this.cachedVersion = DEFAULT_VERSION;
         this.messageFormat = DEFAULT_MESSAGE_FORMAT;
-        this.announcementFormat = DEFAULT_ANNOUNCEMENT_FORMAT;
+        this.joinFormat = DEFAULT_JOIN_FORMAT;
+        this.randomAnnouncementFormat = DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT;
     }
 
     public void start() {
@@ -104,10 +108,20 @@ public final class VotdService {
             cachedRandomVerse = null;
         }
 
-        String nextMessageFormat = plugin.getConfig().getString("votd.message-format", DEFAULT_MESSAGE_FORMAT);
-        messageFormat = normalizeString(nextMessageFormat, DEFAULT_MESSAGE_FORMAT);
-        String nextAnnouncementFormat = plugin.getConfig().getString("votd.announcement-format", DEFAULT_ANNOUNCEMENT_FORMAT);
-        announcementFormat = normalizeString(nextAnnouncementFormat, DEFAULT_ANNOUNCEMENT_FORMAT);
+        messageFormat = normalizeString(
+            plugin.getConfig().getString("votd.message-format", DEFAULT_MESSAGE_FORMAT),
+            DEFAULT_MESSAGE_FORMAT
+        );
+        joinEnabled = plugin.getConfig().getBoolean("votd.join-enabled", true);
+        joinFormat = normalizeString(
+            plugin.getConfig().getString("votd.join-format", messageFormat),
+            DEFAULT_JOIN_FORMAT
+        );
+        String rawRandomFormat = plugin.getConfig().getString("votd.random-announcement-format");
+        if (rawRandomFormat == null || rawRandomFormat.trim().isEmpty()) {
+            rawRandomFormat = plugin.getConfig().getString("votd.announcement-format", DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT);
+        }
+        randomAnnouncementFormat = normalizeString(rawRandomFormat, DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT);
 
         bibleVersion = trimmedVersion;
         apiUrlTemplate = trimmedTemplate;
@@ -121,6 +135,17 @@ public final class VotdService {
     }
 
     public void sendVerse(CommandSender sender) {
+        sendVerse(sender, messageFormat);
+    }
+
+    public void sendJoinVerse(CommandSender sender) {
+        if (!joinEnabled) {
+            return;
+        }
+        sendVerse(sender, joinFormat);
+    }
+
+    private void sendVerse(CommandSender sender, String template) {
         getVerseAsync().whenComplete((verse, error) -> {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (error != null || verse == null) {
@@ -129,7 +154,7 @@ public final class VotdService {
                     );
                     return;
                 }
-                audiences.sender(sender).sendMessage(formatMessage(verse, messageFormat));
+                audiences.sender(sender).sendMessage(formatMessage(verse, template));
             });
         });
     }
@@ -164,7 +189,7 @@ public final class VotdService {
                 }
                 return;
             }
-            Bukkit.getScheduler().runTask(plugin, () -> audiences.all().sendMessage(formatMessage(verse, announcementFormat)));
+            Bukkit.getScheduler().runTask(plugin, () -> audiences.all().sendMessage(formatMessage(verse, randomAnnouncementFormat)));
         });
     }
 
