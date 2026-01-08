@@ -22,14 +22,16 @@ public final class MessageTemplate {
         if (keyValues.length % 2 != 0) {
             throw new IllegalArgumentException("Key/value pairs must be even.");
         }
-        validateKeys(keyValues);
         if (usesLegacyFormat(template)) {
             return LEGACY_SERIALIZER.deserialize(applyLegacyPlaceholders(template, keyValues));
         }
 
         TagResolver.Builder resolver = TagResolver.builder();
         for (int i = 0; i < keyValues.length; i += 2) {
-            String key = (String) keyValues[i];
+            String key = keyAt(keyValues, i);
+            if (key == null) {
+                continue;
+            }
             Object value = keyValues[i + 1];
             if (value instanceof Component) {
                 resolver.resolver(Placeholder.component(key, (Component) value));
@@ -111,14 +113,6 @@ public final class MessageTemplate {
         return result.toString();
     }
 
-    private static void validateKeys(Object[] keyValues) {
-        for (int i = 0; i < keyValues.length; i += 2) {
-            if (!(keyValues[i] instanceof String)) {
-                throw new IllegalArgumentException("Placeholder keys must be String values.");
-            }
-        }
-    }
-
     private static boolean hasKey(Object[] keyValues, String key) {
         return findKeyIndex(keyValues, key) >= 0;
     }
@@ -136,11 +130,22 @@ public final class MessageTemplate {
             return -1;
         }
         for (int i = 0; i < keyValues.length; i += 2) {
-            String candidate = (String) keyValues[i];
-            if (key.equals(candidate)) {
+            String candidate = keyAt(keyValues, i);
+            if (candidate != null && key.equals(candidate)) {
                 return i;
             }
         }
         return -1;
+    }
+
+    private static String keyAt(Object[] keyValues, int index) {
+        Object value = keyValues[index];
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        throw new IllegalArgumentException("Placeholder key at index " + index + " must be a String.");
     }
 }
