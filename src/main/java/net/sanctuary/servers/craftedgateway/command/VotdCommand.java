@@ -6,7 +6,7 @@ import co.aikar.commands.annotation.CommandPermission;
 import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.Subcommand;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.votd.VotdService;
 import org.bukkit.command.CommandSender;
@@ -31,8 +31,8 @@ public final class VotdCommand extends BaseCommand {
     @CommandPermission("craftedgateway.votd.reload")
     @Description("Reload the VOTD configuration.")
     public void onReload(CommandSender sender) {
-        plugin.reloadConfig();
+        plugin.reloadAndUpdateConfig();
         votdService.reload();
-        sender.sendMessage(ChatColor.GREEN + "VOTD configuration reloaded.");
+        sender.sendMessage(NamedTextColor.GREEN + "VOTD configuration reloaded.");
     }
 }

@@ -28,6 +28,8 @@ public final class RadioNowPlayingService {
     private static final String DEFAULT_STATION_URL =
         "https://radio.sanctuaryunited.net/public/sanctuary_radio";
     private static final String DEFAULT_STATION_SHORTCODE = "sanctuary_radio";
+    private static final String NOW_PLAYING_PATH_PREFIX = "/api/live/nowplaying/";
+    private static final String WEBSOCKET_PATH = "/api/live/nowplaying/websocket";
     private static final String DEFAULT_MESSAGE_FORMAT =
         "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>";
     private static final int DEFAULT_RECONNECT_SECONDS = 10;
@@ -84,19 +86,34 @@ public final class RadioNowPlayingService {
     private void reloadFromConfig() {
         enabled = plugin.getConfig().getBoolean("radio.enabled", false);
         debugLogging = plugin.getConfig().getBoolean("radio.debug-logging", false);
-        websocketUrl = normalizeString(
-            plugin.getConfig().getString("radio.websocket-url", DEFAULT_WEBSOCKET_URL),
-            DEFAULT_WEBSOCKET_URL
-        );
+        boolean configUpdated = false;
+        String configuredWebsocketUrl = plugin.getConfig().getString("radio.websocket-url", DEFAULT_WEBSOCKET_URL);
+        String normalizedWebsocketUrl = normalizeString(configuredWebsocketUrl, DEFAULT_WEBSOCKET_URL);
+        String migratedWebsocketUrl = migrateLegacyWebsocketUrl(normalizedWebsocketUrl);
+        if (!Objects.equals(normalizedWebsocketUrl, migratedWebsocketUrl)) {
+            plugin.getLogger().info("Updating legacy radio websocket URL to " + migratedWebsocketUrl + ".");
+            plugin.getConfig().set("radio.websocket-url", migratedWebsocketUrl);
+            configUpdated = true;
+            normalizedWebsocketUrl = migratedWebsocketUrl;
+        }
+        websocketUrl = normalizedWebsocketUrl;
         stationUrl = normalizeString(
             plugin.getConfig().getString("radio.station-url", DEFAULT_STATION_URL),
             DEFAULT_STATION_URL
         );
-        stationShortcode = resolveStationShortcode(
-            plugin.getConfig().getString("radio.station-shortcode", null),
-            websocketUrl,
-            stationUrl
+        String configuredShortcode = normalizeOptional(
+            plugin.getConfig().getString("radio.station-shortcode", null)
         );
+        String derivedShortcode = resolveStationShortcode(null, websocketUrl, stationUrl);
+        stationShortcode = resolveStationShortcode(configuredShortcode, websocketUrl, stationUrl);
+        if (stationShortcode != null
+            && (configuredShortcode == null
+                || (DEFAULT_STATION_SHORTCODE.equals(configuredShortcode)
+                    && derivedShortcode != null
+                    && !DEFAULT_STATION_SHORTCODE.equals(derivedShortcode)))) {
+            plugin.getConfig().set("radio.station-shortcode", stationShortcode);
+            configUpdated = true;
+        }
         subscribeMessage = buildSubscribeMessage(stationShortcode);
         messageFormat = normalizeString(
             plugin.getConfig().getString("radio.message-format", DEFAULT_MESSAGE_FORMAT),
@@ -106,6 +123,9 @@ public final class RadioNowPlayingService {
             1,
             plugin.getConfig().getInt("radio.reconnect-delay-seconds", DEFAULT_RECONNECT_SECONDS)
         );
+        if (configUpdated) {
+            plugin.saveConfig();
+        }
     }
 
     private void reconnect() {
@@ -500,6 +520,25 @@ public final class RadioNowPlayingService {
             return null;
         }
         return segment.isEmpty() ? null : segment;
+    }
+
+    private static String migrateLegacyWebsocketUrl(String websocketUrl) {
+        String normalized = normalizeOptional(websocketUrl);
+        if (normalized == null) {
+            return null;
+        }
+        int queryIndex = normalized.indexOf('?');
+        String base = queryIndex >= 0 ? normalized.substring(0, queryIndex) : normalized;
+        String querySuffix = queryIndex >= 0 ? normalized.substring(queryIndex) : "";
+        int prefixIndex = base.indexOf(NOW_PLAYING_PATH_PREFIX);
+        if (prefixIndex < 0) {
+            return normalized;
+        }
+        String tail = base.substring(prefixIndex + NOW_PLAYING_PATH_PREFIX.length());
+        if (tail.isEmpty() || tail.startsWith("websocket") || tail.startsWith("sse")) {
+            return normalized;
+        }
+        return base.substring(0, prefixIndex) + WEBSOCKET_PATH + querySuffix;
     }
 
     private static String buildSubscribeMessage(String stationShortcode) {

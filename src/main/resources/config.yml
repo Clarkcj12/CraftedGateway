@@ -10,7 +10,7 @@ votd:
   api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=daily&version=%s"
   random-api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=random&version=%s"
 radio:
-  enabled: false
+  enabled: true
   debug-logging: false
   websocket-url: "wss://radio.sanctuaryunited.net/api/live/nowplaying/websocket"
   station-shortcode: "sanctuary_radio"

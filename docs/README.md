@@ -18,7 +18,7 @@
 - Broadcasts the current song when it changes.
 - Includes the station URL in the announcement.
 - Subscribes using the AzuraCast station shortcode.
-- The shortcode is the station URL slug (for example `/public/<shortcode>`).
+- The shortcode is the station URL slug (for example `/public/<shortcode>` in AzuraCast).
 - Restart the server to apply radio configuration changes.
 
 ## Configuration

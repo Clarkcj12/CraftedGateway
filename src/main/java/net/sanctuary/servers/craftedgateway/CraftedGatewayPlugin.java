@@ -25,6 +25,7 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        reloadAndUpdateConfig();
         audiences = BukkitAudiences.create(this);
         String version = getDescription().getVersion();
         sendConsoleStatus(version, Component.text("starting").color(NamedTextColor.YELLOW));
@@ -63,6 +64,12 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
 
     public BukkitAudiences audiences() {
         return audiences;
+    }
+
+    public void reloadAndUpdateConfig() {
+        reloadConfig();
+        getConfig().options().copyDefaults(true);
+        saveConfig();
     }
 
     private void sendConsoleStatus(String version, Component state) {
