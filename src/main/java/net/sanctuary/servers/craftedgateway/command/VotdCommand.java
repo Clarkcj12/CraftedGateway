@@ -35,4 +35,45 @@ public final class VotdCommand extends BaseCommand {
         votdService.reload();
         sender.sendMessage(NamedTextColor.GREEN + "VOTD configuration reloaded.");
     }
+
+    @Subcommand("join enable")
+    @CommandPermission("craftedgateway.votd.join")
+    @Description("Enable VOTD join messages.")
+    public void onJoinEnable(CommandSender sender) {
+        updateConfigFlag("votd.join-enabled", true);
+        votdService.reload();
+        sender.sendMessage(NamedTextColor.GREEN + "VOTD join messages enabled.");
+    }
+
+    @Subcommand("join disable")
+    @CommandPermission("craftedgateway.votd.join")
+    @Description("Disable VOTD join messages.")
+    public void onJoinDisable(CommandSender sender) {
+        updateConfigFlag("votd.join-enabled", false);
+        votdService.reload();
+        sender.sendMessage(NamedTextColor.GREEN + "VOTD join messages disabled.");
+    }
+
+    @Subcommand("announcement enable")
+    @CommandPermission("craftedgateway.votd.announce")
+    @Description("Enable scheduled VOTD announcements.")
+    public void onAnnouncementEnable(CommandSender sender) {
+        updateConfigFlag("votd.announcement-enabled", true);
+        votdService.reload();
+        sender.sendMessage(NamedTextColor.GREEN + "VOTD announcements enabled.");
+    }
+
+    @Subcommand("announcement disable")
+    @CommandPermission("craftedgateway.votd.announce")
+    @Description("Disable scheduled VOTD announcements.")
+    public void onAnnouncementDisable(CommandSender sender) {
+        updateConfigFlag("votd.announcement-enabled", false);
+        votdService.reload();
+        sender.sendMessage(NamedTextColor.GREEN + "VOTD announcements disabled.");
+    }
+
+    private void updateConfigFlag(String path, boolean value) {
+        plugin.getConfig().set(path, value);
+        plugin.saveConfig();
+    }
 }

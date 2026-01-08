@@ -34,6 +34,7 @@ public final class RadioNowPlayingService {
         "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>";
     private static final int DEFAULT_RECONNECT_SECONDS = 10;
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    private static final boolean DEFAULT_ANNOUNCEMENT_ENABLED = true;
 
     private final CraftedGatewayPlugin plugin;
     private final BukkitAudiences audiences;
@@ -49,6 +50,7 @@ public final class RadioNowPlayingService {
     private volatile String subscribeMessage;
     private volatile String messageFormat;
     private volatile int reconnectDelaySeconds;
+    private volatile boolean announcementEnabled;
     private volatile WebSocket webSocket;
     private volatile BukkitTask reconnectTask;
     private volatile boolean connecting;
@@ -65,6 +67,7 @@ public final class RadioNowPlayingService {
         this.subscribeMessage = buildSubscribeMessage(this.stationShortcode);
         this.messageFormat = DEFAULT_MESSAGE_FORMAT;
         this.reconnectDelaySeconds = DEFAULT_RECONNECT_SECONDS;
+        this.announcementEnabled = DEFAULT_ANNOUNCEMENT_ENABLED;
     }
 
     public void start() {
@@ -122,6 +125,10 @@ public final class RadioNowPlayingService {
         reconnectDelaySeconds = Math.max(
             1,
             plugin.getConfig().getInt("radio.reconnect-delay-seconds", DEFAULT_RECONNECT_SECONDS)
+        );
+        announcementEnabled = plugin.getConfig().getBoolean(
+            "radio.announcement-enabled",
+            DEFAULT_ANNOUNCEMENT_ENABLED
         );
         if (configUpdated) {
             plugin.saveConfig();
@@ -346,6 +353,9 @@ public final class RadioNowPlayingService {
         if (Objects.equals(previous, key)) {
             return;
         }
+        if (!announcementEnabled) {
+            return;
+        }
 
         Component message = MessageTemplate.render(
             messageFormat,
@@ -355,6 +365,10 @@ public final class RadioNowPlayingService {
             "url", stationUrl
         );
         Bukkit.getScheduler().runTask(plugin, () -> audiences.all().sendMessage(message));
+    }
+
+    public void setAnnouncementEnabled(boolean enabled) {
+        this.announcementEnabled = enabled;
     }
 
     private SongInfo parseSongInfo(JsonObject nowPlaying) {

@@ -3,6 +3,21 @@ main: net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin
 version: ${version}
 api-version: "1.20"
 permissions:
+  craftedgateway.reload:
+    description: Reload CraftedGateway configuration.
+    default: op
+  craftedgateway.radio.announce:
+    description: Toggle radio now playing announcements.
+    default: op
+  craftedgateway.radio.reload:
+    description: Reload radio configuration.
+    default: op
+  craftedgateway.votd.announce:
+    description: Toggle VOTD scheduled announcements.
+    default: op
+  craftedgateway.votd.join:
+    description: Toggle VOTD join messages.
+    default: op
   craftedgateway.votd.reload:
     description: Reload VOTD configuration.
     default: op
