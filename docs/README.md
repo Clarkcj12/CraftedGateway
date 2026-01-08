@@ -34,6 +34,7 @@ votd:
 - Templates accept MiniMessage tags (recommended).
 - The placeholders `{reference}`, `{version}`, and `{text}` are supported in all templates.
 - Legacy `&` color codes are supported when the template does not contain MiniMessage tags.
+See `docs/MINIMESSAGE.md` for a MiniMessage primer.
 
 ### API URLs
 - `api-url` and `random-api-url` accept `%s` for the Bible version.
