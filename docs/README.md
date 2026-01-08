@@ -56,6 +56,7 @@ radio:
   station-shortcode: "sanctuary_radio"
   station-url: "https://radio.sanctuaryunited.net/public/sanctuary_radio"
   announcement-enabled: true
+  url-label: "Listen Now"
   message-format: "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>"
   reconnect-delay-seconds: 10
 ```
@@ -70,7 +71,8 @@ See `docs/MINIMESSAGE.md` for a MiniMessage primer.
 - `{song}` - combined song text (ex: `Artist - Title`).
 - `{artist}` - song artist.
 - `{title}` - song title.
-- `{url}` - station URL.
+- `{url}` - clickable label that opens the station URL (MiniMessage templates only).
+- `radio.url-label` only affects MiniMessage templates; legacy `&` formats still render the raw URL.
 
 ### API URLs
 - `api-url` and `random-api-url` accept `%s` for the Bible version.
