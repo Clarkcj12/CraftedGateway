@@ -5,3 +5,4 @@ votd:
   bible-version: KJV
   message-format: "&6[VOTD] &e{reference} ({version}) &f{text}"
   api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=daily&version=%s"
+  random-api-url: "https://beta.ourmanna.com/api/v1/get/?format=json&order=random&version=%s"

@@ -26,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 public final class VotdService {
     private static final String DEFAULT_VERSION = "KJV";
     private static final String DEFAULT_API_URL = "https://beta.ourmanna.com/api/v1/get/?format=json&order=daily&version=%s";
+    private static final String DEFAULT_RANDOM_API_URL = "https://beta.ourmanna.com/api/v1/get/?format=json&order=random&version=%s";
     private static final String DEFAULT_MESSAGE_FORMAT = "&6[VOTD] &e{reference} ({version}) &f{text}";
     private static final String DEFAULT_ANNOUNCEMENT_FORMAT = "&6[VOTD] &e{reference} ({version}) &f{text}";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
@@ -35,16 +36,20 @@ public final class VotdService {
     private final BukkitAudiences audiences;
     private final HttpClient httpClient;
     private final Object fetchLock = new Object();
+    private final Object randomFetchLock = new Object();
 
     private volatile VotdEntry cachedVerse;
     private volatile LocalDate cachedDate;
     private volatile String cachedVersion;
     private volatile CompletableFuture<VotdEntry> inflightFetch;
+    private volatile VotdEntry cachedRandomVerse;
+    private volatile CompletableFuture<VotdEntry> inflightRandomFetch;
 
     private volatile boolean announcementEnabled;
     private volatile long announcementIntervalTicks;
     private volatile String bibleVersion;
     private volatile String apiUrlTemplate;
+    private volatile String randomApiUrlTemplate;
     private volatile String messageFormat;
     private volatile String announcementFormat;
     private BukkitTask announcementTask;
@@ -57,6 +62,7 @@ public final class VotdService {
             .build();
         this.bibleVersion = DEFAULT_VERSION;
         this.apiUrlTemplate = DEFAULT_API_URL;
+        this.randomApiUrlTemplate = DEFAULT_RANDOM_API_URL;
         this.cachedVersion = DEFAULT_VERSION;
         this.messageFormat = DEFAULT_MESSAGE_FORMAT;
         this.announcementFormat = DEFAULT_ANNOUNCEMENT_FORMAT;
@@ -72,6 +78,8 @@ public final class VotdService {
         cachedDate = null;
         cachedVersion = null;
         inflightFetch = null;
+        cachedRandomVerse = null;
+        inflightRandomFetch = null;
     }
 
     public void reload() {
@@ -84,10 +92,16 @@ public final class VotdService {
         String trimmedVersion = normalizeString(nextVersion, DEFAULT_VERSION);
         String nextTemplate = plugin.getConfig().getString("votd.api-url", DEFAULT_API_URL);
         String trimmedTemplate = normalizeString(nextTemplate, DEFAULT_API_URL);
+        String nextRandomTemplate = plugin.getConfig().getString("votd.random-api-url", DEFAULT_RANDOM_API_URL);
+        String trimmedRandomTemplate = normalizeString(nextRandomTemplate, DEFAULT_RANDOM_API_URL);
+        boolean versionChanged = !Objects.equals(bibleVersion, trimmedVersion);
 
-        if (!Objects.equals(bibleVersion, trimmedVersion) || !Objects.equals(apiUrlTemplate, trimmedTemplate)) {
+        if (versionChanged || !Objects.equals(apiUrlTemplate, trimmedTemplate)) {
             cachedVerse = null;
             cachedDate = null;
+        }
+        if (versionChanged || !Objects.equals(randomApiUrlTemplate, trimmedRandomTemplate)) {
+            cachedRandomVerse = null;
         }
 
         String nextMessageFormat = plugin.getConfig().getString("votd.message-format", DEFAULT_MESSAGE_FORMAT);
@@ -97,6 +111,7 @@ public final class VotdService {
 
         bibleVersion = trimmedVersion;
         apiUrlTemplate = trimmedTemplate;
+        randomApiUrlTemplate = trimmedRandomTemplate;
         cachedVersion = trimmedVersion;
 
         int intervalMinutes = plugin.getConfig().getInt("votd.announcement-interval-minutes", 10);
@@ -126,7 +141,7 @@ public final class VotdService {
         }
         announcementTask = Bukkit.getScheduler().runTaskTimer(
             plugin,
-            this::announceVerse,
+            this::announceRandomVerse,
             announcementIntervalTicks,
             announcementIntervalTicks
         );
@@ -139,13 +154,13 @@ public final class VotdService {
         }
     }
 
-    private void announceVerse() {
-        getVerseAsync().whenComplete((verse, error) -> {
+    private void announceRandomVerse() {
+        getRandomVerseAsync().whenComplete((verse, error) -> {
             if (error != null || verse == null) {
                 if (error != null) {
-                    plugin.getLogger().warning("VOTD fetch failed: " + error.getMessage());
+                    plugin.getLogger().warning("Random verse fetch failed: " + error.getMessage());
                 } else {
-                    plugin.getLogger().warning("VOTD fetch failed with no cached verse.");
+                    plugin.getLogger().warning("Random verse fetch failed with no cached verse.");
                 }
                 return;
             }
@@ -168,7 +183,7 @@ public final class VotdService {
             inflightFetch = future;
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 try {
-                    VotdEntry verse = fetchVerse();
+                    VotdEntry verse = fetchVerse(apiUrlTemplate);
                     cacheVerse(verse, LocalDate.now());
                     future.complete(verse);
                 } catch (Exception e) {
@@ -188,8 +203,37 @@ public final class VotdService {
         }
     }
 
-    private VotdEntry fetchVerse() throws IOException, InterruptedException {
-        String url = buildApiUrl(apiUrlTemplate, bibleVersion);
+    private CompletableFuture<VotdEntry> getRandomVerseAsync() {
+        synchronized (randomFetchLock) {
+            if (inflightRandomFetch != null && !inflightRandomFetch.isDone()) {
+                return inflightRandomFetch;
+            }
+            CompletableFuture<VotdEntry> future = new CompletableFuture<>();
+            inflightRandomFetch = future;
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                try {
+                    VotdEntry verse = fetchVerse(randomApiUrlTemplate);
+                    cacheRandomVerse(verse);
+                    future.complete(verse);
+                } catch (Exception e) {
+                    VotdEntry fallback = cachedRandomVerse;
+                    if (fallback != null) {
+                        future.complete(fallback);
+                    } else {
+                        future.completeExceptionally(e);
+                    }
+                } finally {
+                    synchronized (randomFetchLock) {
+                        inflightRandomFetch = null;
+                    }
+                }
+            });
+            return future;
+        }
+    }
+
+    private VotdEntry fetchVerse(String template) throws IOException, InterruptedException {
+        String url = buildApiUrl(template, bibleVersion);
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .timeout(HTTP_TIMEOUT)
@@ -232,6 +276,10 @@ public final class VotdService {
         cachedVerse = verse;
         cachedDate = date;
         cachedVersion = bibleVersion;
+    }
+
+    private void cacheRandomVerse(VotdEntry verse) {
+        cachedRandomVerse = verse;
     }
 
     private static String getRequiredString(JsonObject object, String key) throws IOException {
