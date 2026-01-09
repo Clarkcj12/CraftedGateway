@@ -42,7 +42,21 @@ public final class ConfigUtils {
         if (config == null) {
             return null;
         }
-        return normalizeOptional(config.getString(path, null));
+        String defaultValue = getDefaultString(config, path, null);
+        return normalizeOptional(config.getString(path, defaultValue));
+    }
+
+    public static String getNormalizedStringWithFallbackKey(
+        FileConfiguration config,
+        String primaryPath,
+        String secondaryPath,
+        String fallback
+    ) {
+        String primaryValue = getNormalizedOptional(config, primaryPath);
+        if (primaryValue != null) {
+            return primaryValue;
+        }
+        return getNormalizedString(config, secondaryPath, fallback);
     }
 
     public static String getDefaultString(FileConfiguration config, String path, String fallback) {

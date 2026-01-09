@@ -147,14 +147,12 @@ public final class VotdService {
             ConfigKeys.Votd.RANDOM_ANNOUNCEMENT_FORMAT,
             DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT
         );
-        String rawRandomFormat = config.getString(ConfigKeys.Votd.RANDOM_ANNOUNCEMENT_FORMAT);
-        if (rawRandomFormat == null || rawRandomFormat.trim().isEmpty()) {
-            rawRandomFormat = config.getString(
-                ConfigKeys.Votd.ANNOUNCEMENT_FORMAT,
-                defaultRandomAnnouncement
-            );
-        }
-        randomAnnouncementFormat = ConfigUtils.normalizeString(rawRandomFormat, defaultRandomAnnouncement);
+        randomAnnouncementFormat = ConfigUtils.getNormalizedStringWithFallbackKey(
+            config,
+            ConfigKeys.Votd.RANDOM_ANNOUNCEMENT_FORMAT,
+            ConfigKeys.Votd.ANNOUNCEMENT_FORMAT,
+            defaultRandomAnnouncement
+        );
 
         bibleVersion = trimmedVersion;
         apiUrlTemplate = trimmedTemplate;
