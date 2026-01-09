@@ -30,3 +30,6 @@ tablist:
   footer:
     - "<gray>Now Playing:</gray> <yellow>{song}</yellow>"
     - "<gray>Ping:</gray> <yellow>{ping}ms</yellow>"
+metrics:
+  enabled: false
+  log-interval-minutes: 10

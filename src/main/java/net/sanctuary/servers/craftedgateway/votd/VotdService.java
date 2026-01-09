@@ -8,6 +8,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
+import net.sanctuary.servers.craftedgateway.metrics.MetricsService;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import net.sanctuary.servers.craftedgateway.util.SchedulerSupport;
 import org.bukkit.Bukkit;
@@ -43,6 +44,7 @@ public final class VotdService {
     private final HttpClient httpClient;
     private final Object fetchLock = new Object();
     private final Object randomFetchLock = new Object();
+    private final MetricsService metrics;
 
     private volatile VotdEntry cachedVerse;
     private volatile LocalDate cachedDate;
@@ -63,9 +65,14 @@ public final class VotdService {
     private volatile String randomAnnouncementFormat;
     private BukkitTask announcementTask;
 
-    public VotdService(CraftedGatewayPlugin plugin, BukkitAudiences audiences) {
+    public VotdService(
+        CraftedGatewayPlugin plugin,
+        BukkitAudiences audiences,
+        MetricsService metrics
+    ) {
         this.plugin = plugin;
         this.audiences = audiences;
+        this.metrics = Objects.requireNonNull(metrics, "metrics must not be null");
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(HTTP_TIMEOUT)
             .build();
@@ -245,6 +252,8 @@ public final class VotdService {
             CompletableFuture<VotdEntry> future = new CompletableFuture<>();
             inflightFetch = future;
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                boolean record = metrics.isEnabled();
+                long startNanos = record ? System.nanoTime() : 0L;
                 try {
                     VotdEntry verse = fetchVerse(apiUrlTemplate);
                     cacheVerse(verse, LocalDate.now());
@@ -257,6 +266,9 @@ public final class VotdService {
                         future.completeExceptionally(e);
                     }
                 } finally {
+                    if (record) {
+                        metrics.recordVotdFetchDaily(System.nanoTime() - startNanos);
+                    }
                     synchronized (fetchLock) {
                         inflightFetch = null;
                     }
@@ -274,6 +286,8 @@ public final class VotdService {
             CompletableFuture<VotdEntry> future = new CompletableFuture<>();
             inflightRandomFetch = future;
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                boolean record = metrics.isEnabled();
+                long startNanos = record ? System.nanoTime() : 0L;
                 try {
                     VotdEntry verse = fetchVerse(randomApiUrlTemplate);
                     cacheRandomVerse(verse);
@@ -286,6 +300,9 @@ public final class VotdService {
                         future.completeExceptionally(e);
                     }
                 } finally {
+                    if (record) {
+                        metrics.recordVotdFetchRandom(System.nanoTime() - startNanos);
+                    }
                     synchronized (randomFetchLock) {
                         inflightRandomFetch = null;
                     }
@@ -344,6 +361,14 @@ public final class VotdService {
 
     private void cacheRandomVerse(VotdEntry verse) {
         cachedRandomVerse = verse;
+    }
+
+    public boolean hasCachedVerse() {
+        return cachedVerse != null;
+    }
+
+    public boolean hasCachedRandomVerse() {
+        return cachedRandomVerse != null;
     }
 
     private static String getRequiredString(JsonObject object, String key) throws IOException {
