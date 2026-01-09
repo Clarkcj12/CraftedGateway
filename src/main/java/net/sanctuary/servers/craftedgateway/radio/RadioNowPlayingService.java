@@ -54,7 +54,7 @@ public final class RadioNowPlayingService {
     private volatile String messageFormat;
     private volatile int reconnectDelaySeconds;
     private volatile boolean announcementEnabled;
-    private volatile String lastSongText = "";
+    private volatile String lastSongText;
     private volatile WebSocket webSocket;
     private volatile BukkitTask reconnectTask;
     private volatile boolean connecting;
@@ -84,7 +84,7 @@ public final class RadioNowPlayingService {
         cancelReconnect();
         closeSocket();
         lastSongKey.set(null);
-        lastSongText = "";
+        clearLastSongText();
     }
 
     public void reload() {
@@ -149,7 +149,7 @@ public final class RadioNowPlayingService {
         closeSocket();
         cancelReconnect();
         lastSongKey.set(null);
-        lastSongText = "";
+        clearLastSongText();
         if (!enabled) {
             return;
         }
@@ -192,6 +192,7 @@ public final class RadioNowPlayingService {
                     } else {
                         plugin.getLogger().warning("Radio websocket connection failed: " + error.getMessage());
                     }
+                    clearLastSongText();
                     scheduleReconnect();
                     return;
                 }
@@ -289,9 +290,11 @@ public final class RadioNowPlayingService {
             if (debugLogging) {
                 plugin.getLogger().log(Level.FINE, "Failed to parse radio websocket message.", e);
             }
+            clearLastSongText();
             return;
         }
         if (!element.isJsonObject()) {
+            clearLastSongText();
             return;
         }
         JsonObject root = element.getAsJsonObject();
@@ -360,6 +363,7 @@ public final class RadioNowPlayingService {
         JsonObject nowPlaying = extractNowPlayingPayload(payload);
         SongInfo info = parseSongInfo(nowPlaying);
         if (info == null || info.text().isBlank()) {
+            clearLastSongText();
             return;
         }
         String key = info.key();
@@ -389,8 +393,12 @@ public final class RadioNowPlayingService {
         this.announcementEnabled = enabled;
     }
 
-    public String getLastSongText() {
-        return lastSongText;
+    public java.util.Optional<String> getLastSongText() {
+        return java.util.Optional.ofNullable(lastSongText);
+    }
+
+    public void clearLastSongText() {
+        lastSongText = null;
     }
 
     private SongInfo parseSongInfo(JsonObject nowPlaying) {
@@ -636,6 +644,7 @@ public final class RadioNowPlayingService {
             } else {
                 plugin.getLogger().warning("Radio websocket error: " + error.getMessage());
             }
+            clearLastSongText();
             markSocketClosed();
             scheduleReconnect();
         }
@@ -645,6 +654,7 @@ public final class RadioNowPlayingService {
             if (debugLogging) {
                 plugin.getLogger().info("Radio websocket closed: " + statusCode + " (" + reason + ")");
             }
+            clearLastSongText();
             markSocketClosed();
             scheduleReconnect();
             return CompletableFuture.completedFuture(null);

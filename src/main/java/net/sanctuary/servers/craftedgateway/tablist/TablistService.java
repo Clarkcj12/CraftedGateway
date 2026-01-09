@@ -125,7 +125,7 @@ public final class TablistService {
             return;
         }
         String time = timeFormatter.format(LocalTime.now());
-        String song = radioService != null ? radioService.getLastSongText() : "";
+        String song = radioService != null ? radioService.getLastSongText().orElse("") : "";
         for (Player player : Bukkit.getOnlinePlayers()) {
             updatePlayer(player, time, song);
         }
@@ -232,16 +232,19 @@ public final class TablistService {
         if (lines == null || lines.isEmpty()) {
             return List.of(fallback);
         }
-        boolean hasContent = false;
+        List<String> filtered = new java.util.ArrayList<>(lines.size());
         for (String line : lines) {
-            if (line != null && !line.trim().isEmpty()) {
-                hasContent = true;
-                break;
+            if (line == null) {
+                continue;
+            }
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+                filtered.add(line);
             }
         }
-        if (!hasContent) {
+        if (filtered.isEmpty()) {
             return List.of(fallback);
         }
-        return Collections.unmodifiableList(lines);
+        return Collections.unmodifiableList(filtered);
     }
 }
