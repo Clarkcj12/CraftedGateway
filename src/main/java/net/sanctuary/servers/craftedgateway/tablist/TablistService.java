@@ -10,6 +10,7 @@ import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.radio.RadioNowPlayingService;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
+import net.sanctuary.servers.craftedgateway.util.SchedulerSupport;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
@@ -111,21 +112,23 @@ public final class TablistService {
     }
 
     private void scheduleTask() {
-        cancelTask();
         if (!enabled) {
             return;
         }
         synchronized (taskLock) {
-            task = Bukkit.getScheduler().runTaskTimer(plugin, this::updateAll, 1L, updateIntervalTicks);
+            task = SchedulerSupport.rescheduleRepeating(
+                plugin,
+                task,
+                this::updateAll,
+                1L,
+                updateIntervalTicks
+            );
         }
     }
 
     private void cancelTask() {
         synchronized (taskLock) {
-            if (task != null) {
-                task.cancel();
-                task = null;
-            }
+            task = SchedulerSupport.cancelTask(task);
         }
     }
 

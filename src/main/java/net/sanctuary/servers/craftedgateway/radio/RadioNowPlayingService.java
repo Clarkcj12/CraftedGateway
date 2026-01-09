@@ -11,6 +11,7 @@ import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
+import net.sanctuary.servers.craftedgateway.util.SchedulerSupport;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.scheduler.BukkitTask;
@@ -257,7 +258,7 @@ public final class RadioNowPlayingService {
                 return;
             }
             long delayTicks = reconnectDelaySeconds * 20L;
-            reconnectTask = Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+            reconnectTask = SchedulerSupport.rescheduleAsyncLater(plugin, reconnectTask, () -> {
                 synchronized (connectionLock) {
                     reconnectTask = null;
                 }
@@ -268,10 +269,7 @@ public final class RadioNowPlayingService {
 
     private void cancelReconnect() {
         synchronized (connectionLock) {
-            if (reconnectTask != null) {
-                reconnectTask.cancel();
-                reconnectTask = null;
-            }
+            reconnectTask = SchedulerSupport.cancelTask(reconnectTask);
         }
     }
 
