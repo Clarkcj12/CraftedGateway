@@ -199,23 +199,19 @@ public final class VotdService {
     }
 
     private void scheduleAnnouncements() {
-        if (!announcementEnabled || announcementIntervalTicks <= 0) {
-            SchedulerSupport.cancelTask(announcementTask);
-            announcementTask = null;
-            return;
-        }
-        announcementTask = SchedulerSupport.rescheduleRepeating(
+        boolean enabled = announcementEnabled && announcementIntervalTicks > 0;
+        announcementTask = SchedulerSupport.rescheduleRepeatingIfEnabled(
             plugin,
             announcementTask,
             this::announceRandomVerse,
             announcementIntervalTicks,
-            announcementIntervalTicks
+            announcementIntervalTicks,
+            enabled
         );
     }
 
     private void cancelAnnouncements() {
-        SchedulerSupport.cancelTask(announcementTask);
-        announcementTask = null;
+        announcementTask = SchedulerSupport.cancelAndClearTask(announcementTask);
     }
 
     private void announceRandomVerse() {

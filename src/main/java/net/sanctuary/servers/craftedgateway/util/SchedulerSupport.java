@@ -9,9 +9,14 @@ public final class SchedulerSupport {
     }
 
     public static void cancelTask(BukkitTask task) {
-        if (task != null) {
+        if (task != null && !task.isCancelled()) {
             task.cancel();
         }
+    }
+
+    public static <T extends BukkitTask> T cancelAndClearTask(T task) {
+        cancelTask(task);
+        return null;
     }
 
     public static BukkitTask rescheduleRepeating(
@@ -25,6 +30,20 @@ public final class SchedulerSupport {
         return Bukkit.getScheduler().runTaskTimer(plugin, action, delayTicks, intervalTicks);
     }
 
+    public static BukkitTask rescheduleRepeatingIfEnabled(
+        JavaPlugin plugin,
+        BukkitTask current,
+        Runnable action,
+        long delayTicks,
+        long intervalTicks,
+        boolean enabled
+    ) {
+        if (!enabled) {
+            return cancelAndClearTask(current);
+        }
+        return rescheduleRepeating(plugin, current, action, delayTicks, intervalTicks);
+    }
+
     public static BukkitTask rescheduleAsyncLater(
         JavaPlugin plugin,
         BukkitTask current,
@@ -33,5 +52,18 @@ public final class SchedulerSupport {
     ) {
         cancelTask(current);
         return Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, action, delayTicks);
+    }
+
+    public static BukkitTask rescheduleAsyncLaterIfEnabled(
+        JavaPlugin plugin,
+        BukkitTask current,
+        Runnable action,
+        long delayTicks,
+        boolean enabled
+    ) {
+        if (!enabled) {
+            return cancelAndClearTask(current);
+        }
+        return rescheduleAsyncLater(plugin, current, action, delayTicks);
     }
 }

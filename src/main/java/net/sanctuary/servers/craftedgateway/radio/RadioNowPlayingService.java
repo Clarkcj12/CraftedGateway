@@ -269,8 +269,7 @@ public final class RadioNowPlayingService {
 
     private void cancelReconnect() {
         synchronized (connectionLock) {
-            SchedulerSupport.cancelTask(reconnectTask);
-            reconnectTask = null;
+            reconnectTask = SchedulerSupport.cancelAndClearTask(reconnectTask);
         }
     }
 

@@ -113,25 +113,20 @@ public final class TablistService {
 
     private void scheduleTask() {
         synchronized (taskLock) {
-            if (!enabled) {
-                SchedulerSupport.cancelTask(task);
-                task = null;
-                return;
-            }
-            task = SchedulerSupport.rescheduleRepeating(
+            task = SchedulerSupport.rescheduleRepeatingIfEnabled(
                 plugin,
                 task,
                 this::updateAll,
                 1L,
-                updateIntervalTicks
+                updateIntervalTicks,
+                enabled
             );
         }
     }
 
     private void cancelTask() {
         synchronized (taskLock) {
-            SchedulerSupport.cancelTask(task);
-            task = null;
+            task = SchedulerSupport.cancelAndClearTask(task);
         }
     }
 
