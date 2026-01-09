@@ -59,6 +59,17 @@ radio:
   url-label: "Listen Now"
   message-format: "<gold>[Radio]</gold> <yellow>{song}</yellow> <gray>-</gray> <aqua>{url}</aqua>"
   reconnect-delay-seconds: 10
+tablist:
+  enabled: true
+  update-interval-ticks: 40
+  time-format: "h:mm a"
+  debug-logging: false
+  header:
+    - "<gold>SanctuaryMC</gold>"
+    - "<gray>Time:</gray> <yellow>{time}</yellow>"
+  footer:
+    - "<gray>Now Playing:</gray> <yellow>{song}</yellow>"
+    - "<gray>Ping:</gray> <yellow>{ping}ms</yellow>"
 ```
 
 ### Formatting
@@ -73,6 +84,13 @@ See `docs/MINIMESSAGE.md` for a MiniMessage primer.
 - `{title}` - song title.
 - `{url}` - clickable label that opens the station URL (MiniMessage templates only).
 - `radio.url-label` only affects MiniMessage templates; legacy `&` formats still render the raw URL.
+
+### Tablist Placeholders
+- `{player}` - player name.
+- `{time}` - server local time (formatted by `tablist.time-format`).
+- `{song}` - current radio song text.
+- `{ping}` - player ping in milliseconds.
+- `{prefix}` - LuckPerms prefix (legacy colors supported). Prefix also appears before the player name in the list.
 
 ### API URLs
 - `api-url` and `random-api-url` accept `%s` for the Bible version.
