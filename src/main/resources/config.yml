@@ -23,6 +23,7 @@ tablist:
   enabled: true
   update-interval-ticks: 40
   time-format: "h:mm a"
+  debug-logging: false
   header:
     - "<gold>SanctuaryMC</gold>"
     - "<gray>Time:</gray> <yellow>{time}</yellow>"

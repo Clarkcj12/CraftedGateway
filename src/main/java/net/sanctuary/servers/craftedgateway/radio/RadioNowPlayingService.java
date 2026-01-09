@@ -357,18 +357,19 @@ public final class RadioNowPlayingService {
     }
 
     private void handleNowPlayingPayload(JsonObject payload) {
-        if (!announcementEnabled) {
-            return;
-        }
         JsonObject nowPlaying = extractNowPlayingPayload(payload);
         SongInfo info = parseSongInfo(nowPlaying);
         if (info == null || info.text().isBlank()) {
             clearLastSongText();
             return;
         }
+        lastSongText = info.text();
         String key = info.key();
         String previous = lastSongKey.getAndSet(key);
         if (Objects.equals(previous, key)) {
+            return;
+        }
+        if (!announcementEnabled) {
             return;
         }
 
@@ -386,7 +387,6 @@ public final class RadioNowPlayingService {
             "url", urlValue
         );
         Bukkit.getScheduler().runTask(plugin, () -> audiences.all().sendMessage(message));
-        lastSongText = info.text();
     }
 
     public void setAnnouncementEnabled(boolean enabled) {
@@ -397,7 +397,7 @@ public final class RadioNowPlayingService {
         return java.util.Optional.ofNullable(lastSongText);
     }
 
-    public void clearLastSongText() {
+    private void clearLastSongText() {
         lastSongText = null;
     }
 

@@ -40,6 +40,7 @@ public final class TablistService {
     private volatile List<String> headerLines;
     private volatile List<String> footerLines;
     private volatile LuckPerms luckPerms;
+    private volatile boolean loggedLuckPermsMissing;
     private BukkitTask task;
 
     public TablistService(
@@ -94,12 +95,17 @@ public final class TablistService {
         try {
             if (Bukkit.getPluginManager().getPlugin("LuckPerms") != null) {
                 luckPerms = LuckPermsProvider.get();
+                loggedLuckPermsMissing = false;
                 return;
             }
         } catch (IllegalStateException ignored) {
             // LuckPerms not ready or not installed.
         }
         luckPerms = null;
+        if (!loggedLuckPermsMissing && plugin.getConfig().getBoolean("tablist.debug-logging", false)) {
+            loggedLuckPermsMissing = true;
+            plugin.getLogger().info("LuckPerms not available; tablist prefixes will be empty.");
+        }
     }
 
     private void scheduleTask() {
