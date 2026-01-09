@@ -371,12 +371,17 @@ public final class RadioNowPlayingService {
             return;
         }
 
-        boolean legacyFormat = MessageTemplate.usesLegacyFormat(messageFormat);
-        Object urlValue = stationUrl;
-        if (!legacyFormat && stationUrl != null && !stationUrl.isBlank()) {
-            String label = urlLabel == null || urlLabel.isBlank() ? stationUrl : urlLabel;
-            urlValue = Component.text(label).clickEvent(ClickEvent.openUrl(stationUrl));
-        }
+        Object urlValue = MessageTemplate.legacyAwareValue(
+            messageFormat,
+            stationUrl,
+            () -> {
+                if (stationUrl == null || stationUrl.isBlank()) {
+                    return stationUrl;
+                }
+                String label = urlLabel == null || urlLabel.isBlank() ? stationUrl : urlLabel;
+                return Component.text(label).clickEvent(ClickEvent.openUrl(stationUrl));
+            }
+        );
         Component message = MessageTemplate.render(
             messageFormat,
             "song", info.text(),
