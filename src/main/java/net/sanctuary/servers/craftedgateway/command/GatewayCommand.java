@@ -38,7 +38,10 @@ public final class GatewayCommand extends BaseCommand {
     @CommandPermission("craftedgateway.reload")
     @Description("Reload all CraftedGateway configuration.")
     public void onReload(CommandSender sender) {
-        plugin.reloadAll();
-        sender.sendMessage("CraftedGateway configuration reloaded.");
+        CommandSupport.reloadAndNotify(
+            sender,
+            "CraftedGateway configuration reloaded.",
+            plugin::reloadAll
+        );
     }
 }
