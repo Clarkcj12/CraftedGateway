@@ -56,22 +56,23 @@ public final class MessageTemplate {
         return template.indexOf('&') >= 0 && template.indexOf('<') < 0;
     }
 
-    public static Object legacyAwareValue(String template, String legacyValue, Object modernValue) {
+    public static <T> T legacyAwareValue(String template, T legacyValue, T modernValue) {
         if (template == null || usesLegacyFormat(template)) {
             return legacyValue;
         }
         return modernValue;
     }
 
-    public static Object legacyAwareValue(
+    public static <T> T legacyAwareValue(
         String template,
-        String legacyValue,
-        Supplier<?> modernValueSupplier
+        T legacyValue,
+        Supplier<? extends T> modernValueSupplier
     ) {
         if (template == null || usesLegacyFormat(template)) {
             return legacyValue;
         }
-        return modernValueSupplier == null ? null : modernValueSupplier.get();
+        Objects.requireNonNull(modernValueSupplier, "modernValueSupplier must not be null");
+        return modernValueSupplier.get();
     }
 
     private static String applyMiniMessagePlaceholders(String template, Object... keyValues) {
