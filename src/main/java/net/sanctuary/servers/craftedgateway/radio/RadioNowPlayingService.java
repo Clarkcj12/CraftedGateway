@@ -8,6 +8,8 @@ import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
+import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
+import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitTask;
@@ -93,29 +95,35 @@ public final class RadioNowPlayingService {
     }
 
     private void reloadFromConfig() {
-        enabled = plugin.getConfig().getBoolean("radio.enabled", false);
-        debugLogging = plugin.getConfig().getBoolean("radio.debug-logging", false);
+        enabled = plugin.getConfig().getBoolean(ConfigKeys.Radio.ENABLED, false);
+        debugLogging = plugin.getConfig().getBoolean(ConfigKeys.Radio.DEBUG_LOGGING, false);
         boolean configUpdated = false;
-        String configuredWebsocketUrl = plugin.getConfig().getString("radio.websocket-url", DEFAULT_WEBSOCKET_URL);
-        String normalizedWebsocketUrl = normalizeString(configuredWebsocketUrl, DEFAULT_WEBSOCKET_URL);
+        String configuredWebsocketUrl = plugin.getConfig().getString(
+            ConfigKeys.Radio.WEBSOCKET_URL,
+            DEFAULT_WEBSOCKET_URL
+        );
+        String normalizedWebsocketUrl = ConfigUtils.normalizeString(
+            configuredWebsocketUrl,
+            DEFAULT_WEBSOCKET_URL
+        );
         String migratedWebsocketUrl = migrateLegacyWebsocketUrl(normalizedWebsocketUrl);
         if (!Objects.equals(normalizedWebsocketUrl, migratedWebsocketUrl)) {
             plugin.getLogger().info("Updating legacy radio websocket URL to " + migratedWebsocketUrl + ".");
-            plugin.getConfig().set("radio.websocket-url", migratedWebsocketUrl);
+            plugin.getConfig().set(ConfigKeys.Radio.WEBSOCKET_URL, migratedWebsocketUrl);
             configUpdated = true;
             normalizedWebsocketUrl = migratedWebsocketUrl;
         }
         websocketUrl = normalizedWebsocketUrl;
-        stationUrl = normalizeString(
-            plugin.getConfig().getString("radio.station-url", DEFAULT_STATION_URL),
+        stationUrl = ConfigUtils.normalizeString(
+            plugin.getConfig().getString(ConfigKeys.Radio.STATION_URL, DEFAULT_STATION_URL),
             DEFAULT_STATION_URL
         );
-        urlLabel = normalizeString(
-            plugin.getConfig().getString("radio.url-label", DEFAULT_URL_LABEL),
+        urlLabel = ConfigUtils.normalizeString(
+            plugin.getConfig().getString(ConfigKeys.Radio.URL_LABEL, DEFAULT_URL_LABEL),
             DEFAULT_URL_LABEL
         );
-        String configuredShortcode = normalizeOptional(
-            plugin.getConfig().getString("radio.station-shortcode", null)
+        String configuredShortcode = ConfigUtils.normalizeOptional(
+            plugin.getConfig().getString(ConfigKeys.Radio.STATION_SHORTCODE, null)
         );
         String derivedShortcode = resolveStationShortcode(null, websocketUrl, stationUrl);
         stationShortcode = resolveStationShortcode(configuredShortcode, websocketUrl, stationUrl);
@@ -124,20 +132,20 @@ public final class RadioNowPlayingService {
                 || (DEFAULT_STATION_SHORTCODE.equals(configuredShortcode)
                     && derivedShortcode != null
                     && !DEFAULT_STATION_SHORTCODE.equals(derivedShortcode)))) {
-            plugin.getConfig().set("radio.station-shortcode", stationShortcode);
+            plugin.getConfig().set(ConfigKeys.Radio.STATION_SHORTCODE, stationShortcode);
             configUpdated = true;
         }
         subscribeMessage = buildSubscribeMessage(stationShortcode);
-        messageFormat = normalizeString(
-            plugin.getConfig().getString("radio.message-format", DEFAULT_MESSAGE_FORMAT),
+        messageFormat = ConfigUtils.normalizeString(
+            plugin.getConfig().getString(ConfigKeys.Radio.MESSAGE_FORMAT, DEFAULT_MESSAGE_FORMAT),
             DEFAULT_MESSAGE_FORMAT
         );
         reconnectDelaySeconds = Math.max(
             1,
-            plugin.getConfig().getInt("radio.reconnect-delay-seconds", DEFAULT_RECONNECT_SECONDS)
+            plugin.getConfig().getInt(ConfigKeys.Radio.RECONNECT_DELAY_SECONDS, DEFAULT_RECONNECT_SECONDS)
         );
         announcementEnabled = plugin.getConfig().getBoolean(
-            "radio.announcement-enabled",
+            ConfigKeys.Radio.ANNOUNCEMENT_ENABLED,
             DEFAULT_ANNOUNCEMENT_ENABLED
         );
         if (configUpdated) {
@@ -512,24 +520,8 @@ public final class RadioNowPlayingService {
         return value == null ? "" : value;
     }
 
-    private static String normalizeString(String value, String fallback) {
-        if (value == null) {
-            return fallback;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? fallback : trimmed;
-    }
-
-    private static String normalizeOptional(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
     private static String resolveStationShortcode(String configured, String websocketUrl, String stationUrl) {
-        String shortcode = normalizeOptional(configured);
+        String shortcode = ConfigUtils.normalizeOptional(configured);
         if (shortcode != null) {
             return shortcode;
         }
@@ -542,7 +534,7 @@ public final class RadioNowPlayingService {
     }
 
     private static String extractStationShortcode(String url) {
-        String normalized = normalizeOptional(url);
+        String normalized = ConfigUtils.normalizeOptional(url);
         if (normalized == null) {
             return null;
         }
@@ -567,7 +559,7 @@ public final class RadioNowPlayingService {
     }
 
     private static String migrateLegacyWebsocketUrl(String websocketUrl) {
-        String normalized = normalizeOptional(websocketUrl);
+        String normalized = ConfigUtils.normalizeOptional(websocketUrl);
         if (normalized == null) {
             return null;
         }

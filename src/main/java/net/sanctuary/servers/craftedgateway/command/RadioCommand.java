@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.CommandPermission;
 import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.Subcommand;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
+import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.radio.RadioNowPlayingService;
 import org.bukkit.command.CommandSender;
 
@@ -24,8 +25,7 @@ public final class RadioCommand extends BaseCommand {
     @CommandPermission("craftedgateway.radio.reload")
     @Description("Reload the radio configuration.")
     public void onReload(CommandSender sender) {
-        plugin.reloadAndUpdateConfig();
-        radioService.reload();
+        CommandSupport.reloadConfigAndService(plugin, radioService::reload);
         sender.sendMessage("Radio configuration reloaded.");
     }
 
@@ -46,8 +46,7 @@ public final class RadioCommand extends BaseCommand {
     }
 
     private void updateAnnouncementEnabled(boolean enabled) {
-        plugin.getConfig().set("radio.announcement-enabled", enabled);
-        plugin.saveConfig();
+        CommandSupport.updateConfigFlag(plugin, ConfigKeys.Radio.ANNOUNCEMENT_ENABLED, enabled);
         radioService.setAnnouncementEnabled(enabled);
     }
 }

@@ -6,6 +6,8 @@ import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
+import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
+import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -94,12 +96,15 @@ public final class VotdService {
     }
 
     public void reloadFromConfig() {
-        String nextVersion = plugin.getConfig().getString("votd.bible-version", DEFAULT_VERSION);
-        String trimmedVersion = normalizeString(nextVersion, DEFAULT_VERSION);
-        String nextTemplate = plugin.getConfig().getString("votd.api-url", DEFAULT_API_URL);
-        String trimmedTemplate = normalizeString(nextTemplate, DEFAULT_API_URL);
-        String nextRandomTemplate = plugin.getConfig().getString("votd.random-api-url", DEFAULT_RANDOM_API_URL);
-        String trimmedRandomTemplate = normalizeString(nextRandomTemplate, DEFAULT_RANDOM_API_URL);
+        String nextVersion = plugin.getConfig().getString(ConfigKeys.Votd.BIBLE_VERSION, DEFAULT_VERSION);
+        String trimmedVersion = ConfigUtils.normalizeString(nextVersion, DEFAULT_VERSION);
+        String nextTemplate = plugin.getConfig().getString(ConfigKeys.Votd.API_URL, DEFAULT_API_URL);
+        String trimmedTemplate = ConfigUtils.normalizeString(nextTemplate, DEFAULT_API_URL);
+        String nextRandomTemplate = plugin.getConfig().getString(
+            ConfigKeys.Votd.RANDOM_API_URL,
+            DEFAULT_RANDOM_API_URL
+        );
+        String trimmedRandomTemplate = ConfigUtils.normalizeString(nextRandomTemplate, DEFAULT_RANDOM_API_URL);
         boolean versionChanged = !Objects.equals(bibleVersion, trimmedVersion);
 
         if (versionChanged || !Objects.equals(apiUrlTemplate, trimmedTemplate)) {
@@ -110,38 +115,54 @@ public final class VotdService {
             cachedRandomVerse = null;
         }
 
-        String defaultMessageFormat = getDefaultConfigString("votd.message-format", DEFAULT_MESSAGE_FORMAT);
-        messageFormat = normalizeString(
-            plugin.getConfig().getString("votd.message-format", defaultMessageFormat),
+        String defaultMessageFormat = ConfigUtils.getDefaultString(
+            plugin.getConfig(),
+            ConfigKeys.Votd.MESSAGE_FORMAT,
+            DEFAULT_MESSAGE_FORMAT
+        );
+        messageFormat = ConfigUtils.normalizeString(
+            plugin.getConfig().getString(ConfigKeys.Votd.MESSAGE_FORMAT, defaultMessageFormat),
             defaultMessageFormat
         );
         debugLogging = plugin.getConfig().getBoolean(
-            "votd.debug-logging",
-            getDefaultConfigBoolean("votd.debug-logging", DEFAULT_DEBUG_LOGGING)
+            ConfigKeys.Votd.DEBUG_LOGGING,
+            ConfigUtils.getDefaultBoolean(
+                plugin.getConfig(),
+                ConfigKeys.Votd.DEBUG_LOGGING,
+                DEFAULT_DEBUG_LOGGING
+            )
         );
-        joinEnabled = plugin.getConfig().getBoolean("votd.join-enabled", true);
-        String defaultJoinFormat = getDefaultConfigString("votd.join-format", DEFAULT_JOIN_FORMAT);
-        joinFormat = normalizeString(
-            plugin.getConfig().getString("votd.join-format", defaultJoinFormat),
+        joinEnabled = plugin.getConfig().getBoolean(ConfigKeys.Votd.JOIN_ENABLED, true);
+        String defaultJoinFormat = ConfigUtils.getDefaultString(
+            plugin.getConfig(),
+            ConfigKeys.Votd.JOIN_FORMAT,
+            DEFAULT_JOIN_FORMAT
+        );
+        joinFormat = ConfigUtils.normalizeString(
+            plugin.getConfig().getString(ConfigKeys.Votd.JOIN_FORMAT, defaultJoinFormat),
             defaultJoinFormat
         );
-        String defaultRandomAnnouncement = getDefaultConfigString(
-            "votd.random-announcement-format",
+        String defaultRandomAnnouncement = ConfigUtils.getDefaultString(
+            plugin.getConfig(),
+            ConfigKeys.Votd.RANDOM_ANNOUNCEMENT_FORMAT,
             DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT
         );
-        String rawRandomFormat = plugin.getConfig().getString("votd.random-announcement-format");
+        String rawRandomFormat = plugin.getConfig().getString(ConfigKeys.Votd.RANDOM_ANNOUNCEMENT_FORMAT);
         if (rawRandomFormat == null || rawRandomFormat.trim().isEmpty()) {
-            rawRandomFormat = plugin.getConfig().getString("votd.announcement-format", defaultRandomAnnouncement);
+            rawRandomFormat = plugin.getConfig().getString(
+                ConfigKeys.Votd.ANNOUNCEMENT_FORMAT,
+                defaultRandomAnnouncement
+            );
         }
-        randomAnnouncementFormat = normalizeString(rawRandomFormat, defaultRandomAnnouncement);
+        randomAnnouncementFormat = ConfigUtils.normalizeString(rawRandomFormat, defaultRandomAnnouncement);
 
         bibleVersion = trimmedVersion;
         apiUrlTemplate = trimmedTemplate;
         randomApiUrlTemplate = trimmedRandomTemplate;
         cachedVersion = trimmedVersion;
 
-        int intervalMinutes = plugin.getConfig().getInt("votd.announcement-interval-minutes", 10);
-        boolean enabled = plugin.getConfig().getBoolean("votd.announcement-enabled", true);
+        int intervalMinutes = plugin.getConfig().getInt(ConfigKeys.Votd.ANNOUNCEMENT_INTERVAL_MINUTES, 10);
+        boolean enabled = plugin.getConfig().getBoolean(ConfigKeys.Votd.ANNOUNCEMENT_ENABLED, true);
         announcementEnabled = enabled && intervalMinutes > 0;
         announcementIntervalTicks = Math.max(1, intervalMinutes) * 20L * 60L;
     }
@@ -335,28 +356,6 @@ public final class VotdService {
             throw new IOException("Missing field: " + key);
         }
         return object.get(key).getAsString();
-    }
-
-    private static String normalizeString(String value, String fallback) {
-        if (value == null) {
-            return fallback;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? fallback : trimmed;
-    }
-
-    private String getDefaultConfigString(String path, String fallback) {
-        if (plugin.getConfig().getDefaults() == null) {
-            return fallback;
-        }
-        return plugin.getConfig().getDefaults().getString(path, fallback);
-    }
-
-    private boolean getDefaultConfigBoolean(String path, boolean fallback) {
-        if (plugin.getConfig().getDefaults() == null) {
-            return fallback;
-        }
-        return plugin.getConfig().getDefaults().getBoolean(path, fallback);
     }
 
     private static String buildApiUrl(String template, String version) {
