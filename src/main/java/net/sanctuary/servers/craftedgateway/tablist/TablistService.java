@@ -112,10 +112,12 @@ public final class TablistService {
     }
 
     private void scheduleTask() {
-        if (!enabled) {
-            return;
-        }
         synchronized (taskLock) {
+            if (!enabled) {
+                SchedulerSupport.cancelTask(task);
+                task = null;
+                return;
+            }
             task = SchedulerSupport.rescheduleRepeating(
                 plugin,
                 task,
@@ -128,7 +130,8 @@ public final class TablistService {
 
     private void cancelTask() {
         synchronized (taskLock) {
-            task = SchedulerSupport.cancelTask(task);
+            SchedulerSupport.cancelTask(task);
+            task = null;
         }
     }
 

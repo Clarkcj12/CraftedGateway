@@ -199,8 +199,9 @@ public final class VotdService {
     }
 
     private void scheduleAnnouncements() {
-        announcementTask = SchedulerSupport.cancelTask(announcementTask);
         if (!announcementEnabled || announcementIntervalTicks <= 0) {
+            SchedulerSupport.cancelTask(announcementTask);
+            announcementTask = null;
             return;
         }
         announcementTask = SchedulerSupport.rescheduleRepeating(
@@ -213,7 +214,8 @@ public final class VotdService {
     }
 
     private void cancelAnnouncements() {
-        announcementTask = SchedulerSupport.cancelTask(announcementTask);
+        SchedulerSupport.cancelTask(announcementTask);
+        announcementTask = null;
     }
 
     private void announceRandomVerse() {

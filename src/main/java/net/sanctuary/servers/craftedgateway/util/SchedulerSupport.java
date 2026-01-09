@@ -8,11 +8,10 @@ public final class SchedulerSupport {
     private SchedulerSupport() {
     }
 
-    public static BukkitTask cancelTask(BukkitTask task) {
+    public static void cancelTask(BukkitTask task) {
         if (task != null) {
             task.cancel();
         }
-        return null;
     }
 
     public static BukkitTask rescheduleRepeating(
