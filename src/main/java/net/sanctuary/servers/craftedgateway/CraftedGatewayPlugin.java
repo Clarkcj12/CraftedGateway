@@ -10,6 +10,7 @@ import net.sanctuary.servers.craftedgateway.command.GatewayCommand;
 import net.sanctuary.servers.craftedgateway.command.RadioCommand;
 import net.sanctuary.servers.craftedgateway.command.VotdCommand;
 import net.sanctuary.servers.craftedgateway.listener.VotdJoinListener;
+import net.sanctuary.servers.craftedgateway.metrics.MetricsService;
 import net.sanctuary.servers.craftedgateway.radio.RadioNowPlayingService;
 import net.sanctuary.servers.craftedgateway.tablist.TablistService;
 import net.sanctuary.servers.craftedgateway.votd.VotdService;
@@ -24,6 +25,7 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
     private VotdService votdService;
     private RadioNowPlayingService radioService;
     private TablistService tablistService;
+    private MetricsService metricsService;
 
     @Override
     public void onEnable() {
@@ -33,12 +35,15 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         String version = getDescription().getVersion();
         sendConsoleStatus(version, Component.text("starting").color(NamedTextColor.YELLOW));
         getLogger().info("CraftedGateway v" + version + " is starting...");
-        votdService = new VotdService(this, audiences);
+        metricsService = new MetricsService(this);
+        votdService = new VotdService(this, audiences, metricsService);
         votdService.start();
-        radioService = new RadioNowPlayingService(this, audiences);
+        radioService = new RadioNowPlayingService(this, audiences, metricsService);
         radioService.start();
-        tablistService = new TablistService(this, audiences, radioService);
+        tablistService = new TablistService(this, audiences, radioService, metricsService);
         tablistService.start();
+        metricsService.setServices(votdService, radioService, tablistService);
+        metricsService.start();
         getServer().getPluginManager().registerEvents(new VotdJoinListener(votdService), this);
         commandManager = new BukkitCommandManager(this);
         commandManager.registerCommand(new GatewayCommand(this));
@@ -62,6 +67,10 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         if (tablistService != null) {
             tablistService.stop();
             tablistService = null;
+        }
+        if (metricsService != null) {
+            metricsService.stop();
+            metricsService = null;
         }
         if (audiences != null) {
             sendConsoleStatus(version, Component.text("stopped").color(NamedTextColor.RED));
@@ -92,6 +101,9 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         }
         if (tablistService != null) {
             tablistService.reload();
+        }
+        if (metricsService != null) {
+            metricsService.reload();
         }
     }
 

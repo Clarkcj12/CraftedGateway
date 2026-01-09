@@ -10,6 +10,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
+import net.sanctuary.servers.craftedgateway.metrics.MetricsService;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import net.sanctuary.servers.craftedgateway.util.SchedulerSupport;
 import org.bukkit.Bukkit;
@@ -47,6 +48,7 @@ public final class RadioNowPlayingService {
     private final HttpClient httpClient;
     private final Object connectionLock = new Object();
     private final AtomicReference<String> lastSongKey = new AtomicReference<>();
+    private final MetricsService metrics;
 
     private volatile boolean enabled;
     private volatile boolean debugLogging;
@@ -63,9 +65,14 @@ public final class RadioNowPlayingService {
     private volatile BukkitTask reconnectTask;
     private volatile boolean connecting;
 
-    public RadioNowPlayingService(CraftedGatewayPlugin plugin, BukkitAudiences audiences) {
+    public RadioNowPlayingService(
+        CraftedGatewayPlugin plugin,
+        BukkitAudiences audiences,
+        MetricsService metrics
+    ) {
         this.plugin = plugin;
         this.audiences = audiences;
+        this.metrics = metrics;
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(CONNECT_TIMEOUT)
             .build();
@@ -274,35 +281,47 @@ public final class RadioNowPlayingService {
     }
 
     private void handleMessage(String payload) {
-        if (payload == null) {
-            return;
+        MetricsService currentMetrics = metrics;
+        long startNanos = 0L;
+        boolean record = currentMetrics != null && currentMetrics.isEnabled();
+        if (record) {
+            startNanos = System.nanoTime();
         }
-        String trimmed = payload.trim();
-        if (trimmed.isEmpty() || "{}".equals(trimmed)) {
-            return;
-        }
-        JsonElement element;
         try {
-            element = JsonParser.parseString(trimmed);
-        } catch (Exception e) {
-            if (debugLogging) {
-                plugin.getLogger().log(Level.FINE, "Failed to parse radio websocket message.", e);
+            if (payload == null) {
+                return;
             }
-            clearLastSongText();
-            return;
+            String trimmed = payload.trim();
+            if (trimmed.isEmpty() || "{}".equals(trimmed)) {
+                return;
+            }
+            JsonElement element;
+            try {
+                element = JsonParser.parseString(trimmed);
+            } catch (Exception e) {
+                if (debugLogging) {
+                    plugin.getLogger().log(Level.FINE, "Failed to parse radio websocket message.", e);
+                }
+                clearLastSongText();
+                return;
+            }
+            if (!element.isJsonObject()) {
+                clearLastSongText();
+                return;
+            }
+            JsonObject root = element.getAsJsonObject();
+            if (handleConnectPayload(root)) {
+                return;
+            }
+            if (handlePubPayload(root)) {
+                return;
+            }
+            handleNowPlayingPayload(root);
+        } finally {
+            if (record) {
+                currentMetrics.recordRadioHandleMessage(System.nanoTime() - startNanos);
+            }
         }
-        if (!element.isJsonObject()) {
-            clearLastSongText();
-            return;
-        }
-        JsonObject root = element.getAsJsonObject();
-        if (handleConnectPayload(root)) {
-            return;
-        }
-        if (handlePubPayload(root)) {
-            return;
-        }
-        handleNowPlayingPayload(root);
     }
 
     private boolean handleConnectPayload(JsonObject root) {

@@ -8,6 +8,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
+import net.sanctuary.servers.craftedgateway.metrics.MetricsService;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import net.sanctuary.servers.craftedgateway.util.SchedulerSupport;
 import org.bukkit.Bukkit;
@@ -43,6 +44,7 @@ public final class VotdService {
     private final HttpClient httpClient;
     private final Object fetchLock = new Object();
     private final Object randomFetchLock = new Object();
+    private final MetricsService metrics;
 
     private volatile VotdEntry cachedVerse;
     private volatile LocalDate cachedDate;
@@ -63,9 +65,14 @@ public final class VotdService {
     private volatile String randomAnnouncementFormat;
     private BukkitTask announcementTask;
 
-    public VotdService(CraftedGatewayPlugin plugin, BukkitAudiences audiences) {
+    public VotdService(
+        CraftedGatewayPlugin plugin,
+        BukkitAudiences audiences,
+        MetricsService metrics
+    ) {
         this.plugin = plugin;
         this.audiences = audiences;
+        this.metrics = metrics;
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(HTTP_TIMEOUT)
             .build();
@@ -245,6 +252,12 @@ public final class VotdService {
             CompletableFuture<VotdEntry> future = new CompletableFuture<>();
             inflightFetch = future;
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                MetricsService currentMetrics = metrics;
+                long startNanos = 0L;
+                boolean record = currentMetrics != null && currentMetrics.isEnabled();
+                if (record) {
+                    startNanos = System.nanoTime();
+                }
                 try {
                     VotdEntry verse = fetchVerse(apiUrlTemplate);
                     cacheVerse(verse, LocalDate.now());
@@ -255,6 +268,10 @@ public final class VotdService {
                         future.complete(fallback);
                     } else {
                         future.completeExceptionally(e);
+                    }
+                } finally {
+                    if (record) {
+                        currentMetrics.recordVotdFetchDaily(System.nanoTime() - startNanos);
                     }
                 } finally {
                     synchronized (fetchLock) {
@@ -274,6 +291,12 @@ public final class VotdService {
             CompletableFuture<VotdEntry> future = new CompletableFuture<>();
             inflightRandomFetch = future;
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                MetricsService currentMetrics = metrics;
+                long startNanos = 0L;
+                boolean record = currentMetrics != null && currentMetrics.isEnabled();
+                if (record) {
+                    startNanos = System.nanoTime();
+                }
                 try {
                     VotdEntry verse = fetchVerse(randomApiUrlTemplate);
                     cacheRandomVerse(verse);
@@ -284,6 +307,10 @@ public final class VotdService {
                         future.complete(fallback);
                     } else {
                         future.completeExceptionally(e);
+                    }
+                } finally {
+                    if (record) {
+                        currentMetrics.recordVotdFetchRandom(System.nanoTime() - startNanos);
                     }
                 } finally {
                     synchronized (randomFetchLock) {
@@ -344,6 +371,14 @@ public final class VotdService {
 
     private void cacheRandomVerse(VotdEntry verse) {
         cachedRandomVerse = verse;
+    }
+
+    public boolean hasCachedVerse() {
+        return cachedVerse != null;
+    }
+
+    public boolean hasCachedRandomVerse() {
+        return cachedRandomVerse != null;
     }
 
     private static String getRequiredString(JsonObject object, String key) throws IOException {

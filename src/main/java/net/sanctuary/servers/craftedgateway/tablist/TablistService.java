@@ -9,6 +9,7 @@ import net.luckperms.api.model.user.User;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
+import net.sanctuary.servers.craftedgateway.metrics.MetricsService;
 import net.sanctuary.servers.craftedgateway.radio.RadioNowPlayingService;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import net.sanctuary.servers.craftedgateway.util.SchedulerSupport;
@@ -34,6 +35,7 @@ public final class TablistService {
     private final CraftedGatewayPlugin plugin;
     private final BukkitAudiences audiences;
     private final RadioNowPlayingService radioService;
+    private final MetricsService metrics;
     private final Object taskLock = new Object();
     private final LegacyComponentSerializer legacySerializer = LegacyComponentSerializer.legacyAmpersand();
     private final LegacyComponentSerializer legacySectionSerializer = LegacyComponentSerializer.legacySection();
@@ -50,11 +52,13 @@ public final class TablistService {
     public TablistService(
         CraftedGatewayPlugin plugin,
         BukkitAudiences audiences,
-        RadioNowPlayingService radioService
+        RadioNowPlayingService radioService,
+        MetricsService metrics
     ) {
         this.plugin = plugin;
         this.audiences = audiences;
         this.radioService = radioService;
+        this.metrics = metrics;
         this.timeFormatter = DateTimeFormatter.ofPattern(DEFAULT_TIME_FORMAT, Locale.ENGLISH);
         this.headerLines = List.of(DEFAULT_HEADER);
         this.footerLines = List.of(DEFAULT_FOOTER);
@@ -147,11 +151,27 @@ public final class TablistService {
         if (!enabled) {
             return;
         }
-        String time = timeFormatter.format(LocalTime.now());
-        String song = radioService != null ? radioService.getLastSongText().orElse("") : "";
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            updatePlayer(player, time, song);
+        MetricsService currentMetrics = metrics;
+        long startNanos = 0L;
+        boolean record = currentMetrics != null && currentMetrics.isEnabled();
+        if (record) {
+            startNanos = System.nanoTime();
         }
+        try {
+            String time = timeFormatter.format(LocalTime.now());
+            String song = radioService != null ? radioService.getLastSongText().orElse("") : "";
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                updatePlayer(player, time, song);
+            }
+        } finally {
+            if (record) {
+                currentMetrics.recordTablistUpdate(System.nanoTime() - startNanos);
+            }
+        }
+    }
+
+    public boolean isEnabled() {
+        return enabled;
     }
 
     private void updatePlayer(Player player, String time, String song) {

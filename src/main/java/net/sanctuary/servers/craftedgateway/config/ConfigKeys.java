@@ -47,4 +47,12 @@ public final class ConfigKeys {
         private Tablist() {
         }
     }
+
+    public static final class Metrics {
+        public static final String ENABLED = "metrics.enabled";
+        public static final String LOG_INTERVAL_MINUTES = "metrics.log-interval-minutes";
+
+        private Metrics() {
+        }
+    }
 }
