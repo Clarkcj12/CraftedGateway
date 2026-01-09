@@ -68,7 +68,7 @@ tablist:
     - "<gray>Time:</gray> <yellow>{time}</yellow>"
   footer:
     - "<gray>Now Playing:</gray> <yellow>{song}</yellow>"
-    - "<gray>Ping:</gray> <yellow>{ping}ms</yellow> <gray>{prefix}</gray>"
+    - "<gray>Ping:</gray> <yellow>{ping}ms</yellow>"
 ```
 
 ### Formatting
@@ -89,7 +89,7 @@ See `docs/MINIMESSAGE.md` for a MiniMessage primer.
 - `{time}` - server local time (formatted by `tablist.time-format`).
 - `{song}` - current radio song text.
 - `{ping}` - player ping in milliseconds.
-- `{prefix}` - LuckPerms prefix (legacy colors supported).
+- `{prefix}` - LuckPerms prefix (legacy colors supported). Prefix also appears before the player name in the list.
 
 ### API URLs
 - `api-url` and `random-api-url` accept `%s` for the Bible version.

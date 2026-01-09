@@ -134,6 +134,7 @@ public final class TablistService {
     private void updatePlayer(Player player, String time, String song) {
         String prefix = getPrefix(player);
         Component prefixComponent = parsePrefixComponent(prefix);
+        updatePlayerListName(player, prefixComponent);
 
         Component header = renderLines(
             headerLines,
@@ -152,6 +153,17 @@ public final class TablistService {
             prefixComponent
         );
         audiences.player(player).sendPlayerListHeaderAndFooter(header, footer);
+    }
+
+    private void updatePlayerListName(Player player, Component prefixComponent) {
+        Component name = Component.text(player.getName());
+        Component listName;
+        if (prefixComponent == null || prefixComponent.equals(Component.empty())) {
+            listName = name;
+        } else {
+            listName = prefixComponent.append(Component.space()).append(name);
+        }
+        player.playerListName(listName);
     }
 
     private Component renderLines(

@@ -28,4 +28,4 @@ tablist:
     - "<gray>Time:</gray> <yellow>{time}</yellow>"
   footer:
     - "<gray>Now Playing:</gray> <yellow>{song}</yellow>"
-    - "<gray>Ping:</gray> <yellow>{ping}ms</yellow> <gray>{prefix}</gray>"
+    - "<gray>Ping:</gray> <yellow>{ping}ms</yellow>"
