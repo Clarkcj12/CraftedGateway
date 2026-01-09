@@ -7,6 +7,7 @@ import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
+import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.radio.RadioNowPlayingService;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import org.bukkit.Bukkit;
@@ -73,19 +74,19 @@ public final class TablistService {
     }
 
     private void reloadFromConfig() {
-        enabled = plugin.getConfig().getBoolean("tablist.enabled", DEFAULT_ENABLED);
+        enabled = plugin.getConfig().getBoolean(ConfigKeys.Tablist.ENABLED, DEFAULT_ENABLED);
         updateIntervalTicks = Math.max(
             1,
-            plugin.getConfig().getInt("tablist.update-interval-ticks", DEFAULT_UPDATE_TICKS)
+            plugin.getConfig().getInt(ConfigKeys.Tablist.UPDATE_INTERVAL_TICKS, DEFAULT_UPDATE_TICKS)
         );
-        String pattern = plugin.getConfig().getString("tablist.time-format", DEFAULT_TIME_FORMAT);
+        String pattern = plugin.getConfig().getString(ConfigKeys.Tablist.TIME_FORMAT, DEFAULT_TIME_FORMAT);
         timeFormatter = buildFormatter(pattern, DEFAULT_TIME_FORMAT);
         headerLines = normalizeLines(
-            plugin.getConfig().getStringList("tablist.header"),
+            plugin.getConfig().getStringList(ConfigKeys.Tablist.HEADER),
             DEFAULT_HEADER
         );
         footerLines = normalizeLines(
-            plugin.getConfig().getStringList("tablist.footer"),
+            plugin.getConfig().getStringList(ConfigKeys.Tablist.FOOTER),
             DEFAULT_FOOTER
         );
         refreshLuckPerms();
@@ -102,7 +103,8 @@ public final class TablistService {
             // LuckPerms not ready or not installed.
         }
         luckPerms = null;
-        if (!loggedLuckPermsMissing && plugin.getConfig().getBoolean("tablist.debug-logging", false)) {
+        if (!loggedLuckPermsMissing
+            && plugin.getConfig().getBoolean(ConfigKeys.Tablist.DEBUG_LOGGING, false)) {
             loggedLuckPermsMissing = true;
             plugin.getLogger().info("LuckPerms not available; tablist prefixes will be empty.");
         }

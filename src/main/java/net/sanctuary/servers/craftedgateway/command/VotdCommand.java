@@ -8,6 +8,7 @@ import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.Subcommand;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
+import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.votd.VotdService;
 import org.bukkit.command.CommandSender;
 
@@ -31,8 +32,7 @@ public final class VotdCommand extends BaseCommand {
     @CommandPermission("craftedgateway.votd.reload")
     @Description("Reload the VOTD configuration.")
     public void onReload(CommandSender sender) {
-        plugin.reloadAndUpdateConfig();
-        votdService.reload();
+        CommandSupport.reloadConfigAndService(plugin, votdService::reload);
         sender.sendMessage(NamedTextColor.GREEN + "VOTD configuration reloaded.");
     }
 
@@ -40,7 +40,7 @@ public final class VotdCommand extends BaseCommand {
     @CommandPermission("craftedgateway.votd.join")
     @Description("Enable VOTD join messages.")
     public void onJoinEnable(CommandSender sender) {
-        updateConfigFlag("votd.join-enabled", true);
+        CommandSupport.updateConfigFlag(plugin, ConfigKeys.Votd.JOIN_ENABLED, true);
         votdService.reload();
         sender.sendMessage(NamedTextColor.GREEN + "VOTD join messages enabled.");
     }
@@ -49,7 +49,7 @@ public final class VotdCommand extends BaseCommand {
     @CommandPermission("craftedgateway.votd.join")
     @Description("Disable VOTD join messages.")
     public void onJoinDisable(CommandSender sender) {
-        updateConfigFlag("votd.join-enabled", false);
+        CommandSupport.updateConfigFlag(plugin, ConfigKeys.Votd.JOIN_ENABLED, false);
         votdService.reload();
         sender.sendMessage(NamedTextColor.GREEN + "VOTD join messages disabled.");
     }
@@ -58,7 +58,7 @@ public final class VotdCommand extends BaseCommand {
     @CommandPermission("craftedgateway.votd.announce")
     @Description("Enable scheduled VOTD announcements.")
     public void onAnnouncementEnable(CommandSender sender) {
-        updateConfigFlag("votd.announcement-enabled", true);
+        CommandSupport.updateConfigFlag(plugin, ConfigKeys.Votd.ANNOUNCEMENT_ENABLED, true);
         votdService.reload();
         sender.sendMessage(NamedTextColor.GREEN + "VOTD announcements enabled.");
     }
@@ -67,13 +67,8 @@ public final class VotdCommand extends BaseCommand {
     @CommandPermission("craftedgateway.votd.announce")
     @Description("Disable scheduled VOTD announcements.")
     public void onAnnouncementDisable(CommandSender sender) {
-        updateConfigFlag("votd.announcement-enabled", false);
+        CommandSupport.updateConfigFlag(plugin, ConfigKeys.Votd.ANNOUNCEMENT_ENABLED, false);
         votdService.reload();
         sender.sendMessage(NamedTextColor.GREEN + "VOTD announcements disabled.");
-    }
-
-    private void updateConfigFlag(String path, boolean value) {
-        plugin.getConfig().set(path, value);
-        plugin.saveConfig();
     }
 }
