@@ -12,6 +12,7 @@ import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.net.URI;
@@ -95,36 +96,26 @@ public final class RadioNowPlayingService {
     }
 
     private void reloadFromConfig() {
-        enabled = plugin.getConfig().getBoolean(ConfigKeys.Radio.ENABLED, false);
-        debugLogging = plugin.getConfig().getBoolean(ConfigKeys.Radio.DEBUG_LOGGING, false);
+        FileConfiguration config = plugin.getConfig();
+        enabled = config.getBoolean(ConfigKeys.Radio.ENABLED, false);
+        debugLogging = config.getBoolean(ConfigKeys.Radio.DEBUG_LOGGING, false);
         boolean configUpdated = false;
-        String configuredWebsocketUrl = plugin.getConfig().getString(
+        String normalizedWebsocketUrl = ConfigUtils.getNormalizedString(
+            config,
             ConfigKeys.Radio.WEBSOCKET_URL,
-            DEFAULT_WEBSOCKET_URL
-        );
-        String normalizedWebsocketUrl = ConfigUtils.normalizeString(
-            configuredWebsocketUrl,
             DEFAULT_WEBSOCKET_URL
         );
         String migratedWebsocketUrl = migrateLegacyWebsocketUrl(normalizedWebsocketUrl);
         if (!Objects.equals(normalizedWebsocketUrl, migratedWebsocketUrl)) {
             plugin.getLogger().info("Updating legacy radio websocket URL to " + migratedWebsocketUrl + ".");
-            plugin.getConfig().set(ConfigKeys.Radio.WEBSOCKET_URL, migratedWebsocketUrl);
+            config.set(ConfigKeys.Radio.WEBSOCKET_URL, migratedWebsocketUrl);
             configUpdated = true;
             normalizedWebsocketUrl = migratedWebsocketUrl;
         }
         websocketUrl = normalizedWebsocketUrl;
-        stationUrl = ConfigUtils.normalizeString(
-            plugin.getConfig().getString(ConfigKeys.Radio.STATION_URL, DEFAULT_STATION_URL),
-            DEFAULT_STATION_URL
-        );
-        urlLabel = ConfigUtils.normalizeString(
-            plugin.getConfig().getString(ConfigKeys.Radio.URL_LABEL, DEFAULT_URL_LABEL),
-            DEFAULT_URL_LABEL
-        );
-        String configuredShortcode = ConfigUtils.normalizeOptional(
-            plugin.getConfig().getString(ConfigKeys.Radio.STATION_SHORTCODE, null)
-        );
+        stationUrl = ConfigUtils.getNormalizedString(config, ConfigKeys.Radio.STATION_URL, DEFAULT_STATION_URL);
+        urlLabel = ConfigUtils.getNormalizedString(config, ConfigKeys.Radio.URL_LABEL, DEFAULT_URL_LABEL);
+        String configuredShortcode = ConfigUtils.getNormalizedOptional(config, ConfigKeys.Radio.STATION_SHORTCODE);
         String derivedShortcode = resolveStationShortcode(null, websocketUrl, stationUrl);
         stationShortcode = resolveStationShortcode(configuredShortcode, websocketUrl, stationUrl);
         if (stationShortcode != null
@@ -132,19 +123,20 @@ public final class RadioNowPlayingService {
                 || (DEFAULT_STATION_SHORTCODE.equals(configuredShortcode)
                     && derivedShortcode != null
                     && !DEFAULT_STATION_SHORTCODE.equals(derivedShortcode)))) {
-            plugin.getConfig().set(ConfigKeys.Radio.STATION_SHORTCODE, stationShortcode);
+            config.set(ConfigKeys.Radio.STATION_SHORTCODE, stationShortcode);
             configUpdated = true;
         }
         subscribeMessage = buildSubscribeMessage(stationShortcode);
-        messageFormat = ConfigUtils.normalizeString(
-            plugin.getConfig().getString(ConfigKeys.Radio.MESSAGE_FORMAT, DEFAULT_MESSAGE_FORMAT),
+        messageFormat = ConfigUtils.getNormalizedString(
+            config,
+            ConfigKeys.Radio.MESSAGE_FORMAT,
             DEFAULT_MESSAGE_FORMAT
         );
         reconnectDelaySeconds = Math.max(
             1,
-            plugin.getConfig().getInt(ConfigKeys.Radio.RECONNECT_DELAY_SECONDS, DEFAULT_RECONNECT_SECONDS)
+            config.getInt(ConfigKeys.Radio.RECONNECT_DELAY_SECONDS, DEFAULT_RECONNECT_SECONDS)
         );
-        announcementEnabled = plugin.getConfig().getBoolean(
+        announcementEnabled = config.getBoolean(
             ConfigKeys.Radio.ANNOUNCEMENT_ENABLED,
             DEFAULT_ANNOUNCEMENT_ENABLED
         );

@@ -40,35 +40,33 @@ public final class VotdCommand extends BaseCommand {
     @CommandPermission("craftedgateway.votd.join")
     @Description("Enable VOTD join messages.")
     public void onJoinEnable(CommandSender sender) {
-        CommandSupport.updateConfigFlag(plugin, ConfigKeys.Votd.JOIN_ENABLED, true);
-        votdService.reload();
-        sender.sendMessage(NamedTextColor.GREEN + "VOTD join messages enabled.");
+        updateConfigFlag(sender, ConfigKeys.Votd.JOIN_ENABLED, true, "VOTD join messages enabled.");
     }
 
     @Subcommand("join disable")
     @CommandPermission("craftedgateway.votd.join")
     @Description("Disable VOTD join messages.")
     public void onJoinDisable(CommandSender sender) {
-        CommandSupport.updateConfigFlag(plugin, ConfigKeys.Votd.JOIN_ENABLED, false);
-        votdService.reload();
-        sender.sendMessage(NamedTextColor.GREEN + "VOTD join messages disabled.");
+        updateConfigFlag(sender, ConfigKeys.Votd.JOIN_ENABLED, false, "VOTD join messages disabled.");
     }
 
     @Subcommand("announcement enable")
     @CommandPermission("craftedgateway.votd.announce")
     @Description("Enable scheduled VOTD announcements.")
     public void onAnnouncementEnable(CommandSender sender) {
-        CommandSupport.updateConfigFlag(plugin, ConfigKeys.Votd.ANNOUNCEMENT_ENABLED, true);
-        votdService.reload();
-        sender.sendMessage(NamedTextColor.GREEN + "VOTD announcements enabled.");
+        updateConfigFlag(sender, ConfigKeys.Votd.ANNOUNCEMENT_ENABLED, true, "VOTD announcements enabled.");
     }
 
     @Subcommand("announcement disable")
     @CommandPermission("craftedgateway.votd.announce")
     @Description("Disable scheduled VOTD announcements.")
     public void onAnnouncementDisable(CommandSender sender) {
-        CommandSupport.updateConfigFlag(plugin, ConfigKeys.Votd.ANNOUNCEMENT_ENABLED, false);
+        updateConfigFlag(sender, ConfigKeys.Votd.ANNOUNCEMENT_ENABLED, false, "VOTD announcements disabled.");
+    }
+
+    private void updateConfigFlag(CommandSender sender, String path, boolean value, String message) {
+        CommandSupport.updateConfigFlag(plugin, path, value);
         votdService.reload();
-        sender.sendMessage(NamedTextColor.GREEN + "VOTD announcements disabled.");
+        sender.sendMessage(NamedTextColor.GREEN + message);
     }
 }
