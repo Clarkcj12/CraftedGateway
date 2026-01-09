@@ -84,7 +84,7 @@ public final class TablistService {
         );
         updateIntervalTicks = Math.max(
             1,
-            config.getInt(ConfigKeys.Tablist.UPDATE_INTERVAL_TICKS, DEFAULT_UPDATE_TICKS)
+            ConfigUtils.getDefaultInt(config, ConfigKeys.Tablist.UPDATE_INTERVAL_TICKS, DEFAULT_UPDATE_TICKS)
         );
         String pattern = ConfigUtils.getNormalizedStringFromDefaults(
             config,
