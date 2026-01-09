@@ -11,6 +11,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Objects;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 public final class MetricsService {
@@ -19,6 +20,9 @@ public final class MetricsService {
 
     private final CraftedGatewayPlugin plugin;
     private final Object taskLock = new Object();
+    private final Supplier<VotdService> votdSupplier;
+    private final Supplier<RadioNowPlayingService> radioSupplier;
+    private final Supplier<TablistService> tablistSupplier;
     private final TimingBucket tablistUpdate = new TimingBucket("tablist.update");
     private final TimingBucket radioMessage = new TimingBucket("radio.handle-message");
     private final TimingBucket votdFetchDaily = new TimingBucket("votd.fetch-daily");
@@ -27,24 +31,19 @@ public final class MetricsService {
     private volatile boolean enabled;
     private volatile long logIntervalTicks;
     private BukkitTask logTask;
-    private VotdService votdService;
-    private RadioNowPlayingService radioService;
-    private TablistService tablistService;
 
-    public MetricsService(CraftedGatewayPlugin plugin) {
+    public MetricsService(
+        CraftedGatewayPlugin plugin,
+        Supplier<VotdService> votdSupplier,
+        Supplier<RadioNowPlayingService> radioSupplier,
+        Supplier<TablistService> tablistSupplier
+    ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin must not be null");
+        this.votdSupplier = Objects.requireNonNull(votdSupplier, "votdSupplier must not be null");
+        this.radioSupplier = Objects.requireNonNull(radioSupplier, "radioSupplier must not be null");
+        this.tablistSupplier = Objects.requireNonNull(tablistSupplier, "tablistSupplier must not be null");
         this.enabled = false;
         this.logIntervalTicks = DEFAULT_LOG_INTERVAL_MINUTES * 20L * 60L;
-    }
-
-    public void setServices(
-        VotdService votdService,
-        RadioNowPlayingService radioService,
-        TablistService tablistService
-    ) {
-        this.votdService = votdService;
-        this.radioService = radioService;
-        this.tablistService = tablistService;
     }
 
     public void start() {
@@ -163,6 +162,9 @@ public final class MetricsService {
 
     private void appendCaches(StringBuilder builder) {
         builder.append(" caches[");
+        VotdService votdService = votdSupplier.get();
+        RadioNowPlayingService radioService = radioSupplier.get();
+        TablistService tablistService = tablistSupplier.get();
         int votdDaily = votdService != null && votdService.hasCachedVerse() ? 1 : 0;
         int votdRandom = votdService != null && votdService.hasCachedRandomVerse() ? 1 : 0;
         int radioLast = radioService != null && radioService.getLastSongText().isPresent() ? 1 : 0;

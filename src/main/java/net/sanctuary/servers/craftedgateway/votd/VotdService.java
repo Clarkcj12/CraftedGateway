@@ -252,7 +252,8 @@ public final class VotdService {
             CompletableFuture<VotdEntry> future = new CompletableFuture<>();
             inflightFetch = future;
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                long startNanos = System.nanoTime();
+                boolean record = metrics.isEnabled();
+                long startNanos = record ? System.nanoTime() : 0L;
                 try {
                     VotdEntry verse = fetchVerse(apiUrlTemplate);
                     cacheVerse(verse, LocalDate.now());
@@ -265,7 +266,9 @@ public final class VotdService {
                         future.completeExceptionally(e);
                     }
                 } finally {
-                    metrics.recordVotdFetchDaily(System.nanoTime() - startNanos);
+                    if (record) {
+                        metrics.recordVotdFetchDaily(System.nanoTime() - startNanos);
+                    }
                     synchronized (fetchLock) {
                         inflightFetch = null;
                     }
@@ -283,7 +286,8 @@ public final class VotdService {
             CompletableFuture<VotdEntry> future = new CompletableFuture<>();
             inflightRandomFetch = future;
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                long startNanos = System.nanoTime();
+                boolean record = metrics.isEnabled();
+                long startNanos = record ? System.nanoTime() : 0L;
                 try {
                     VotdEntry verse = fetchVerse(randomApiUrlTemplate);
                     cacheRandomVerse(verse);
@@ -296,7 +300,9 @@ public final class VotdService {
                         future.completeExceptionally(e);
                     }
                 } finally {
-                    metrics.recordVotdFetchRandom(System.nanoTime() - startNanos);
+                    if (record) {
+                        metrics.recordVotdFetchRandom(System.nanoTime() - startNanos);
+                    }
                     synchronized (randomFetchLock) {
                         inflightRandomFetch = null;
                     }

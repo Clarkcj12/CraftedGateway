@@ -35,14 +35,18 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         String version = getDescription().getVersion();
         sendConsoleStatus(version, Component.text("starting").color(NamedTextColor.YELLOW));
         getLogger().info("CraftedGateway v" + version + " is starting...");
-        metricsService = new MetricsService(this);
+        metricsService = new MetricsService(
+            this,
+            () -> votdService,
+            () -> radioService,
+            () -> tablistService
+        );
         votdService = new VotdService(this, audiences, metricsService);
         votdService.start();
         radioService = new RadioNowPlayingService(this, audiences, metricsService);
         radioService.start();
         tablistService = new TablistService(this, audiences, radioService, metricsService);
         tablistService.start();
-        metricsService.setServices(votdService, radioService, tablistService);
         metricsService.start();
         getServer().getPluginManager().registerEvents(new VotdJoinListener(votdService), this);
         commandManager = new BukkitCommandManager(this);

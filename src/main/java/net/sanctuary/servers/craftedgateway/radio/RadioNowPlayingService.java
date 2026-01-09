@@ -288,7 +288,8 @@ public final class RadioNowPlayingService {
         if (trimmed.isEmpty() || "{}".equals(trimmed)) {
             return;
         }
-        long startNanos = System.nanoTime();
+        boolean record = metrics.isEnabled();
+        long startNanos = record ? System.nanoTime() : 0L;
         try {
             JsonElement element;
             try {
@@ -313,7 +314,9 @@ public final class RadioNowPlayingService {
             }
             handleNowPlayingPayload(root);
         } finally {
-            metrics.recordRadioHandleMessage(System.nanoTime() - startNanos);
+            if (record) {
+                metrics.recordRadioHandleMessage(System.nanoTime() - startNanos);
+            }
         }
     }
 

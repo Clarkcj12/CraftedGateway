@@ -152,7 +152,8 @@ public final class TablistService {
         if (!enabled) {
             return;
         }
-        long startNanos = System.nanoTime();
+        boolean record = metrics.isEnabled();
+        long startNanos = record ? System.nanoTime() : 0L;
         try {
             String time = timeFormatter.format(LocalTime.now());
             String song = radioService != null ? radioService.getLastSongText().orElse("") : "";
@@ -160,7 +161,9 @@ public final class TablistService {
                 updatePlayer(player, time, song);
             }
         } finally {
-            metrics.recordTablistUpdate(System.nanoTime() - startNanos);
+            if (record) {
+                metrics.recordTablistUpdate(System.nanoTime() - startNanos);
+            }
         }
     }
 
