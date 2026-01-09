@@ -32,7 +32,7 @@ public final class VotdCommand extends BaseCommand {
     @CommandPermission("craftedgateway.votd.reload")
     @Description("Reload the VOTD configuration.")
     public void onReload(CommandSender sender) {
-        CommandSupport.reloadConfigAndNotify(
+        CommandSupport.reloadConfigAndNotifySender(
             plugin,
             sender,
             NamedTextColor.GREEN + "VOTD configuration reloaded.",

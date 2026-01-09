@@ -25,7 +25,7 @@ public final class RadioCommand extends BaseCommand {
     @CommandPermission("craftedgateway.radio.reload")
     @Description("Reload the radio configuration.")
     public void onReload(CommandSender sender) {
-        CommandSupport.reloadConfigAndNotify(
+        CommandSupport.reloadConfigAndNotifySender(
             plugin,
             sender,
             "Radio configuration reloaded.",

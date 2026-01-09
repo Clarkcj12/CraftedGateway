@@ -10,13 +10,13 @@ public final class CommandSupport {
     }
 
     public static void reloadConfigAndService(CraftedGatewayPlugin plugin, Runnable reloadAction) {
+        Objects.requireNonNull(plugin, "plugin must not be null");
         plugin.reloadAndUpdateConfig();
-        if (reloadAction != null) {
-            reloadAction.run();
-        }
+        Objects.requireNonNull(reloadAction, "reloadAction must not be null");
+        reloadAction.run();
     }
 
-    public static void reloadConfigAndNotify(
+    public static void reloadConfigAndNotifySender(
         CraftedGatewayPlugin plugin,
         CommandSender sender,
         String message,
@@ -26,11 +26,10 @@ public final class CommandSupport {
         Objects.requireNonNull(sender, "sender must not be null");
         Objects.requireNonNull(message, "message must not be null");
         Objects.requireNonNull(reloadAction, "reloadAction must not be null");
-        reloadConfigAndService(plugin, reloadAction);
-        sender.sendMessage(message);
+        runAndNotifySender(sender, message, () -> reloadConfigAndService(plugin, reloadAction));
     }
 
-    public static void runActionAndNotify(
+    public static void runAndNotifySender(
         CommandSender sender,
         String message,
         Runnable action
