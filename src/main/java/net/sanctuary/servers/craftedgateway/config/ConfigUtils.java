@@ -72,4 +72,11 @@ public final class ConfigUtils {
         }
         return config.getDefaults().getBoolean(path, fallback);
     }
+
+    public static int getDefaultInt(FileConfiguration config, String path, int fallback) {
+        if (config == null || config.getDefaults() == null) {
+            return fallback;
+        }
+        return config.getDefaults().getInt(path, fallback);
+    }
 }

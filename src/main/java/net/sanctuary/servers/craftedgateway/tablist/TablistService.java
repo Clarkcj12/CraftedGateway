@@ -8,10 +8,12 @@ import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
+import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
 import net.sanctuary.servers.craftedgateway.radio.RadioNowPlayingService;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import net.sanctuary.servers.craftedgateway.util.SchedulerSupport;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -58,7 +60,7 @@ public final class TablistService {
         this.footerLines = List.of(DEFAULT_FOOTER);
         this.updateIntervalTicks = DEFAULT_UPDATE_TICKS;
         this.enabled = DEFAULT_ENABLED;
-        refreshLuckPerms();
+        refreshLuckPerms(plugin.getConfig());
     }
 
     public void start() {
@@ -75,25 +77,33 @@ public final class TablistService {
     }
 
     private void reloadFromConfig() {
-        enabled = plugin.getConfig().getBoolean(ConfigKeys.Tablist.ENABLED, DEFAULT_ENABLED);
+        FileConfiguration config = plugin.getConfig();
+        enabled = config.getBoolean(
+            ConfigKeys.Tablist.ENABLED,
+            ConfigUtils.getDefaultBoolean(config, ConfigKeys.Tablist.ENABLED, DEFAULT_ENABLED)
+        );
         updateIntervalTicks = Math.max(
             1,
-            plugin.getConfig().getInt(ConfigKeys.Tablist.UPDATE_INTERVAL_TICKS, DEFAULT_UPDATE_TICKS)
+            ConfigUtils.getDefaultInt(config, ConfigKeys.Tablist.UPDATE_INTERVAL_TICKS, DEFAULT_UPDATE_TICKS)
         );
-        String pattern = plugin.getConfig().getString(ConfigKeys.Tablist.TIME_FORMAT, DEFAULT_TIME_FORMAT);
+        String pattern = ConfigUtils.getNormalizedStringFromDefaults(
+            config,
+            ConfigKeys.Tablist.TIME_FORMAT,
+            DEFAULT_TIME_FORMAT
+        );
         timeFormatter = buildFormatter(pattern, DEFAULT_TIME_FORMAT);
         headerLines = normalizeLines(
-            plugin.getConfig().getStringList(ConfigKeys.Tablist.HEADER),
+            config.getStringList(ConfigKeys.Tablist.HEADER),
             DEFAULT_HEADER
         );
         footerLines = normalizeLines(
-            plugin.getConfig().getStringList(ConfigKeys.Tablist.FOOTER),
+            config.getStringList(ConfigKeys.Tablist.FOOTER),
             DEFAULT_FOOTER
         );
-        refreshLuckPerms();
+        refreshLuckPerms(config);
     }
 
-    private void refreshLuckPerms() {
+    private void refreshLuckPerms(FileConfiguration config) {
         try {
             if (Bukkit.getPluginManager().getPlugin("LuckPerms") != null) {
                 luckPerms = LuckPermsProvider.get();
@@ -105,7 +115,10 @@ public final class TablistService {
         }
         luckPerms = null;
         if (!loggedLuckPermsMissing
-            && plugin.getConfig().getBoolean(ConfigKeys.Tablist.DEBUG_LOGGING, false)) {
+            && config.getBoolean(
+                ConfigKeys.Tablist.DEBUG_LOGGING,
+                ConfigUtils.getDefaultBoolean(config, ConfigKeys.Tablist.DEBUG_LOGGING, false)
+            )) {
             loggedLuckPermsMissing = true;
             plugin.getLogger().info("LuckPerms not available; tablist prefixes will be empty.");
         }
