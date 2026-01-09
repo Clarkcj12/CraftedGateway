@@ -72,7 +72,7 @@ public final class VotdService {
     ) {
         this.plugin = plugin;
         this.audiences = audiences;
-        this.metrics = metrics;
+        this.metrics = Objects.requireNonNull(metrics, "metrics must not be null");
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(HTTP_TIMEOUT)
             .build();
@@ -252,12 +252,7 @@ public final class VotdService {
             CompletableFuture<VotdEntry> future = new CompletableFuture<>();
             inflightFetch = future;
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                MetricsService currentMetrics = metrics;
-                long startNanos = 0L;
-                boolean record = currentMetrics != null && currentMetrics.isEnabled();
-                if (record) {
-                    startNanos = System.nanoTime();
-                }
+                long startNanos = System.nanoTime();
                 try {
                     VotdEntry verse = fetchVerse(apiUrlTemplate);
                     cacheVerse(verse, LocalDate.now());
@@ -270,10 +265,7 @@ public final class VotdService {
                         future.completeExceptionally(e);
                     }
                 } finally {
-                    if (record) {
-                        currentMetrics.recordVotdFetchDaily(System.nanoTime() - startNanos);
-                    }
-                } finally {
+                    metrics.recordVotdFetchDaily(System.nanoTime() - startNanos);
                     synchronized (fetchLock) {
                         inflightFetch = null;
                     }
@@ -291,12 +283,7 @@ public final class VotdService {
             CompletableFuture<VotdEntry> future = new CompletableFuture<>();
             inflightRandomFetch = future;
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                MetricsService currentMetrics = metrics;
-                long startNanos = 0L;
-                boolean record = currentMetrics != null && currentMetrics.isEnabled();
-                if (record) {
-                    startNanos = System.nanoTime();
-                }
+                long startNanos = System.nanoTime();
                 try {
                     VotdEntry verse = fetchVerse(randomApiUrlTemplate);
                     cacheRandomVerse(verse);
@@ -309,10 +296,7 @@ public final class VotdService {
                         future.completeExceptionally(e);
                     }
                 } finally {
-                    if (record) {
-                        currentMetrics.recordVotdFetchRandom(System.nanoTime() - startNanos);
-                    }
-                } finally {
+                    metrics.recordVotdFetchRandom(System.nanoTime() - startNanos);
                     synchronized (randomFetchLock) {
                         inflightRandomFetch = null;
                     }

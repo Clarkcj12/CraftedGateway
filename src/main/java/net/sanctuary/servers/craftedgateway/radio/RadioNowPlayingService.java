@@ -72,7 +72,7 @@ public final class RadioNowPlayingService {
     ) {
         this.plugin = plugin;
         this.audiences = audiences;
-        this.metrics = metrics;
+        this.metrics = Objects.requireNonNull(metrics, "metrics must not be null");
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(CONNECT_TIMEOUT)
             .build();
@@ -281,20 +281,15 @@ public final class RadioNowPlayingService {
     }
 
     private void handleMessage(String payload) {
-        MetricsService currentMetrics = metrics;
-        long startNanos = 0L;
-        boolean record = currentMetrics != null && currentMetrics.isEnabled();
-        if (record) {
-            startNanos = System.nanoTime();
+        if (payload == null) {
+            return;
         }
+        String trimmed = payload.trim();
+        if (trimmed.isEmpty() || "{}".equals(trimmed)) {
+            return;
+        }
+        long startNanos = System.nanoTime();
         try {
-            if (payload == null) {
-                return;
-            }
-            String trimmed = payload.trim();
-            if (trimmed.isEmpty() || "{}".equals(trimmed)) {
-                return;
-            }
             JsonElement element;
             try {
                 element = JsonParser.parseString(trimmed);
@@ -318,9 +313,7 @@ public final class RadioNowPlayingService {
             }
             handleNowPlayingPayload(root);
         } finally {
-            if (record) {
-                currentMetrics.recordRadioHandleMessage(System.nanoTime() - startNanos);
-            }
+            metrics.recordRadioHandleMessage(System.nanoTime() - startNanos);
         }
     }
 

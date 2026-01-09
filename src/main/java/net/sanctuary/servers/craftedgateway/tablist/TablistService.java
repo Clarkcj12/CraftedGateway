@@ -24,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public final class TablistService {
     private static final String DEFAULT_TIME_FORMAT = "h:mm a";
@@ -58,7 +59,7 @@ public final class TablistService {
         this.plugin = plugin;
         this.audiences = audiences;
         this.radioService = radioService;
-        this.metrics = metrics;
+        this.metrics = Objects.requireNonNull(metrics, "metrics must not be null");
         this.timeFormatter = DateTimeFormatter.ofPattern(DEFAULT_TIME_FORMAT, Locale.ENGLISH);
         this.headerLines = List.of(DEFAULT_HEADER);
         this.footerLines = List.of(DEFAULT_FOOTER);
@@ -151,12 +152,7 @@ public final class TablistService {
         if (!enabled) {
             return;
         }
-        MetricsService currentMetrics = metrics;
-        long startNanos = 0L;
-        boolean record = currentMetrics != null && currentMetrics.isEnabled();
-        if (record) {
-            startNanos = System.nanoTime();
-        }
+        long startNanos = System.nanoTime();
         try {
             String time = timeFormatter.format(LocalTime.now());
             String song = radioService != null ? radioService.getLastSongText().orElse("") : "";
@@ -164,9 +160,7 @@ public final class TablistService {
                 updatePlayer(player, time, song);
             }
         } finally {
-            if (record) {
-                currentMetrics.recordTablistUpdate(System.nanoTime() - startNanos);
-            }
+            metrics.recordTablistUpdate(System.nanoTime() - startNanos);
         }
     }
 
