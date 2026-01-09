@@ -222,8 +222,7 @@ public final class TablistService {
         String prefix,
         Component prefixComponent
     ) {
-        boolean legacyFormat = MessageTemplate.usesLegacyFormat(template);
-        Object prefixValue = legacyFormat ? prefix : prefixComponent;
+        Object prefixValue = MessageTemplate.legacyAwareValue(template, prefix, prefixComponent);
         return MessageTemplate.render(
             template,
             "player", player.getName(),

@@ -7,6 +7,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public final class MessageTemplate {
     private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
@@ -53,6 +54,30 @@ public final class MessageTemplate {
             return false;
         }
         return template.indexOf('&') >= 0 && template.indexOf('<') < 0;
+    }
+
+    /**
+     * Returns {@code legacyValue} when the template is {@code null} or legacy-formatted,
+     * otherwise returns {@code modernValue}.
+     */
+    public static <T> T legacyAwareValue(String template, T legacyValue, T modernValue) {
+        if (template == null || usesLegacyFormat(template)) {
+            return legacyValue;
+        }
+        return modernValue;
+    }
+
+    /**
+     * Returns {@code legacyValue} when the template is {@code null} or legacy-formatted,
+     * otherwise returns the supplied modern value.
+     */
+    public static <T> T legacyAwareValue(
+        String template,
+        T legacyValue,
+        Supplier<? extends T> modernValueSupplier
+    ) {
+        Objects.requireNonNull(modernValueSupplier, "modernValueSupplier must not be null");
+        return legacyAwareValue(template, legacyValue, modernValueSupplier.get());
     }
 
     private static String applyMiniMessagePlaceholders(String template, Object... keyValues) {
