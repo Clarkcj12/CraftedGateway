@@ -9,6 +9,7 @@ import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import net.sanctuary.servers.craftedgateway.config.ConfigKeys;
 import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
+import net.sanctuary.servers.craftedgateway.util.SchedulerSupport;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -198,23 +199,19 @@ public final class VotdService {
     }
 
     private void scheduleAnnouncements() {
-        cancelAnnouncements();
-        if (!announcementEnabled || announcementIntervalTicks <= 0) {
-            return;
-        }
-        announcementTask = Bukkit.getScheduler().runTaskTimer(
+        boolean enabled = announcementEnabled && announcementIntervalTicks > 0;
+        announcementTask = SchedulerSupport.rescheduleRepeatingIfEnabled(
             plugin,
+            announcementTask,
             this::announceRandomVerse,
             announcementIntervalTicks,
-            announcementIntervalTicks
+            announcementIntervalTicks,
+            enabled
         );
     }
 
     private void cancelAnnouncements() {
-        if (announcementTask != null) {
-            announcementTask.cancel();
-            announcementTask = null;
-        }
+        announcementTask = SchedulerSupport.cancelAndClearTask(announcementTask);
     }
 
     private void announceRandomVerse() {
