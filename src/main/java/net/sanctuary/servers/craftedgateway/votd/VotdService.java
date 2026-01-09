@@ -11,6 +11,7 @@ import net.sanctuary.servers.craftedgateway.config.ConfigUtils;
 import net.sanctuary.servers.craftedgateway.text.MessageTemplate;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.IOException;
@@ -96,15 +97,22 @@ public final class VotdService {
     }
 
     public void reloadFromConfig() {
-        String nextVersion = plugin.getConfig().getString(ConfigKeys.Votd.BIBLE_VERSION, DEFAULT_VERSION);
-        String trimmedVersion = ConfigUtils.normalizeString(nextVersion, DEFAULT_VERSION);
-        String nextTemplate = plugin.getConfig().getString(ConfigKeys.Votd.API_URL, DEFAULT_API_URL);
-        String trimmedTemplate = ConfigUtils.normalizeString(nextTemplate, DEFAULT_API_URL);
-        String nextRandomTemplate = plugin.getConfig().getString(
+        FileConfiguration config = plugin.getConfig();
+        String trimmedVersion = ConfigUtils.getNormalizedString(
+            config,
+            ConfigKeys.Votd.BIBLE_VERSION,
+            DEFAULT_VERSION
+        );
+        String trimmedTemplate = ConfigUtils.getNormalizedString(
+            config,
+            ConfigKeys.Votd.API_URL,
+            DEFAULT_API_URL
+        );
+        String trimmedRandomTemplate = ConfigUtils.getNormalizedString(
+            config,
             ConfigKeys.Votd.RANDOM_API_URL,
             DEFAULT_RANDOM_API_URL
         );
-        String trimmedRandomTemplate = ConfigUtils.normalizeString(nextRandomTemplate, DEFAULT_RANDOM_API_URL);
         boolean versionChanged = !Objects.equals(bibleVersion, trimmedVersion);
 
         if (versionChanged || !Objects.equals(apiUrlTemplate, trimmedTemplate)) {
@@ -115,41 +123,33 @@ public final class VotdService {
             cachedRandomVerse = null;
         }
 
-        String defaultMessageFormat = ConfigUtils.getDefaultString(
-            plugin.getConfig(),
+        messageFormat = ConfigUtils.getNormalizedStringFromDefaults(
+            config,
             ConfigKeys.Votd.MESSAGE_FORMAT,
             DEFAULT_MESSAGE_FORMAT
         );
-        messageFormat = ConfigUtils.normalizeString(
-            plugin.getConfig().getString(ConfigKeys.Votd.MESSAGE_FORMAT, defaultMessageFormat),
-            defaultMessageFormat
-        );
-        debugLogging = plugin.getConfig().getBoolean(
+        debugLogging = config.getBoolean(
             ConfigKeys.Votd.DEBUG_LOGGING,
             ConfigUtils.getDefaultBoolean(
-                plugin.getConfig(),
+                config,
                 ConfigKeys.Votd.DEBUG_LOGGING,
                 DEFAULT_DEBUG_LOGGING
             )
         );
-        joinEnabled = plugin.getConfig().getBoolean(ConfigKeys.Votd.JOIN_ENABLED, true);
-        String defaultJoinFormat = ConfigUtils.getDefaultString(
-            plugin.getConfig(),
+        joinEnabled = config.getBoolean(ConfigKeys.Votd.JOIN_ENABLED, true);
+        joinFormat = ConfigUtils.getNormalizedStringFromDefaults(
+            config,
             ConfigKeys.Votd.JOIN_FORMAT,
             DEFAULT_JOIN_FORMAT
         );
-        joinFormat = ConfigUtils.normalizeString(
-            plugin.getConfig().getString(ConfigKeys.Votd.JOIN_FORMAT, defaultJoinFormat),
-            defaultJoinFormat
-        );
         String defaultRandomAnnouncement = ConfigUtils.getDefaultString(
-            plugin.getConfig(),
+            config,
             ConfigKeys.Votd.RANDOM_ANNOUNCEMENT_FORMAT,
             DEFAULT_RANDOM_ANNOUNCEMENT_FORMAT
         );
-        String rawRandomFormat = plugin.getConfig().getString(ConfigKeys.Votd.RANDOM_ANNOUNCEMENT_FORMAT);
+        String rawRandomFormat = config.getString(ConfigKeys.Votd.RANDOM_ANNOUNCEMENT_FORMAT);
         if (rawRandomFormat == null || rawRandomFormat.trim().isEmpty()) {
-            rawRandomFormat = plugin.getConfig().getString(
+            rawRandomFormat = config.getString(
                 ConfigKeys.Votd.ANNOUNCEMENT_FORMAT,
                 defaultRandomAnnouncement
             );
@@ -161,8 +161,8 @@ public final class VotdService {
         randomApiUrlTemplate = trimmedRandomTemplate;
         cachedVersion = trimmedVersion;
 
-        int intervalMinutes = plugin.getConfig().getInt(ConfigKeys.Votd.ANNOUNCEMENT_INTERVAL_MINUTES, 10);
-        boolean enabled = plugin.getConfig().getBoolean(ConfigKeys.Votd.ANNOUNCEMENT_ENABLED, true);
+        int intervalMinutes = config.getInt(ConfigKeys.Votd.ANNOUNCEMENT_INTERVAL_MINUTES, 10);
+        boolean enabled = config.getBoolean(ConfigKeys.Votd.ANNOUNCEMENT_ENABLED, true);
         announcementEnabled = enabled && intervalMinutes > 0;
         announcementIntervalTicks = Math.max(1, intervalMinutes) * 20L * 60L;
     }
