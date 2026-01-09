@@ -32,6 +32,7 @@ public final class TablistService {
     private final RadioNowPlayingService radioService;
     private final Object taskLock = new Object();
     private final LegacyComponentSerializer legacySerializer = LegacyComponentSerializer.legacyAmpersand();
+    private final LegacyComponentSerializer legacySectionSerializer = LegacyComponentSerializer.legacySection();
 
     private volatile boolean enabled;
     private volatile long updateIntervalTicks;
@@ -163,7 +164,7 @@ public final class TablistService {
         } else {
             listName = prefixComponent.append(Component.space()).append(name);
         }
-        player.playerListName(listName);
+        player.setPlayerListName(legacySectionSerializer.serialize(listName));
     }
 
     private Component renderLines(
