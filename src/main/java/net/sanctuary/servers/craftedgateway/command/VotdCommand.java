@@ -34,9 +34,9 @@ public final class VotdCommand extends BaseCommand {
     public void onReload(CommandSender sender) {
         CommandSupport.reloadConfigAndNotify(
             plugin,
-            votdService::reload,
             sender,
-            NamedTextColor.GREEN + "VOTD configuration reloaded."
+            NamedTextColor.GREEN + "VOTD configuration reloaded.",
+            votdService::reload
         );
     }
 

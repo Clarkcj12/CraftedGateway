@@ -3,6 +3,8 @@ package net.sanctuary.servers.craftedgateway.command;
 import net.sanctuary.servers.craftedgateway.CraftedGatewayPlugin;
 import org.bukkit.command.CommandSender;
 
+import java.util.Objects;
+
 public final class CommandSupport {
     private CommandSupport() {
     }
@@ -16,27 +18,28 @@ public final class CommandSupport {
 
     public static void reloadConfigAndNotify(
         CraftedGatewayPlugin plugin,
-        Runnable reloadAction,
-        CommandSender sender,
-        String message
-    ) {
-        reloadConfigAndService(plugin, reloadAction);
-        if (sender != null && message != null) {
-            sender.sendMessage(message);
-        }
-    }
-
-    public static void reloadAndNotify(
         CommandSender sender,
         String message,
         Runnable reloadAction
     ) {
-        if (reloadAction != null) {
-            reloadAction.run();
-        }
-        if (sender != null && message != null) {
-            sender.sendMessage(message);
-        }
+        Objects.requireNonNull(plugin, "plugin must not be null");
+        Objects.requireNonNull(sender, "sender must not be null");
+        Objects.requireNonNull(message, "message must not be null");
+        Objects.requireNonNull(reloadAction, "reloadAction must not be null");
+        reloadConfigAndService(plugin, reloadAction);
+        sender.sendMessage(message);
+    }
+
+    public static void runActionAndNotify(
+        CommandSender sender,
+        String message,
+        Runnable action
+    ) {
+        Objects.requireNonNull(sender, "sender must not be null");
+        Objects.requireNonNull(message, "message must not be null");
+        Objects.requireNonNull(action, "action must not be null");
+        action.run();
+        sender.sendMessage(message);
     }
 
     public static void updateConfigFlag(CraftedGatewayPlugin plugin, String path, boolean value) {

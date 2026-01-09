@@ -27,9 +27,9 @@ public final class RadioCommand extends BaseCommand {
     public void onReload(CommandSender sender) {
         CommandSupport.reloadConfigAndNotify(
             plugin,
-            radioService::reload,
             sender,
-            "Radio configuration reloaded."
+            "Radio configuration reloaded.",
+            radioService::reload
         );
     }
 
