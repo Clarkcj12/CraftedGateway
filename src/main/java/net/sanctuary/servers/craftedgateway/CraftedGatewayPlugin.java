@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.sanctuary.servers.craftedgateway.command.GatewayCommand;
+import net.sanctuary.servers.craftedgateway.command.NightVisionCommand;
 import net.sanctuary.servers.craftedgateway.command.RadioCommand;
 import net.sanctuary.servers.craftedgateway.command.VotdCommand;
 import net.sanctuary.servers.craftedgateway.listener.VotdJoinListener;
@@ -53,6 +54,7 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         commandManager.registerCommand(new GatewayCommand(this));
         commandManager.registerCommand(new VotdCommand(this, votdService));
         commandManager.registerCommand(new RadioCommand(this, radioService));
+        commandManager.registerCommand(new NightVisionCommand());
         sendConsoleStatus(version, Component.text("ready").color(NamedTextColor.GREEN));
         getLogger().info("CraftedGateway v" + version + " is ready.");
     }
