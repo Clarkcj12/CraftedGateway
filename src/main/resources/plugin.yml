@@ -6,16 +6,61 @@ version: ${version}
 api-version: "1.20"
 softdepend:
   - LuckPerms
+
+commands:
+  gateway:
+    description: CraftedGateway base command.
+    usage: /<command> [reload]
+    aliases: [craftedgateway, cg]
+  votd:
+    description: Show the Bible verse of the day.
+    usage: /<command> [reload|join|announcement] [enable|disable]
+    aliases: [verseoftheday, bibleverse]
+  radio:
+    description: Radio now playing controls.
+    usage: /<command> [reload|announcement] [enable|disable]
+  nightvision:
+    description: Toggle night vision effect.
+    usage: /<command> [on|off|<player>] [duration]
+    aliases: [nv]
+
 permissions:
+  # Wildcard parent
+  craftedgateway.*:
+    description: All CraftedGateway permissions.
+    default: op
+    children:
+      craftedgateway.reload: true
+      craftedgateway.radio.*: true
+      craftedgateway.votd.*: true
+      craftedgateway.nightvision.*: true
+
   craftedgateway.reload:
     description: Reload CraftedGateway configuration.
     default: op
+
+  # Radio permissions
+  craftedgateway.radio.*:
+    description: All radio permissions.
+    default: op
+    children:
+      craftedgateway.radio.announce: true
+      craftedgateway.radio.reload: true
   craftedgateway.radio.announce:
     description: Toggle radio now playing announcements.
     default: op
   craftedgateway.radio.reload:
     description: Reload radio configuration.
     default: op
+
+  # VOTD permissions
+  craftedgateway.votd.*:
+    description: All VOTD permissions.
+    default: op
+    children:
+      craftedgateway.votd.announce: true
+      craftedgateway.votd.join: true
+      craftedgateway.votd.reload: true
   craftedgateway.votd.announce:
     description: Toggle VOTD scheduled announcements.
     default: op
@@ -24,4 +69,22 @@ permissions:
     default: op
   craftedgateway.votd.reload:
     description: Reload VOTD configuration.
+    default: op
+
+  # NightVision permissions
+  craftedgateway.nightvision.*:
+    description: All night vision permissions.
+    default: op
+    children:
+      craftedgateway.nightvision.self: true
+      craftedgateway.nightvision.others: true
+      craftedgateway.nightvision.duration: true
+  craftedgateway.nightvision.self:
+    description: Toggle night vision for yourself.
+    default: true
+  craftedgateway.nightvision.others:
+    description: Toggle night vision for other players.
+    default: op
+  craftedgateway.nightvision.duration:
+    description: Apply night vision with a custom duration.
     default: op
