@@ -8,6 +8,8 @@ import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.Optional;
 import co.aikar.commands.annotation.Subcommand;
+import net.kyori.adventure.platform.bukkit.BukkitAudiences;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -25,14 +27,17 @@ public final class NightVisionCommand extends BaseCommand {
     private static final Pattern DURATION_PATTERN = Pattern.compile("^(\\d+)([smh])$");
     private static final int TICKS_PER_SECOND = 20;
 
-    public NightVisionCommand() {
+    private final BukkitAudiences audiences;
+
+    public NightVisionCommand(BukkitAudiences audiences) {
+        this.audiences = audiences;
     }
 
     @Default
     @CommandCompletion("@players")
     public void onDefault(CommandSender sender, @Optional String arg1, @Optional String arg2) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(NamedTextColor.RED + "This command can only be used by players.");
+            audiences.sender(sender).sendMessage(Component.text("This command can only be used by players.", NamedTextColor.RED));
             return;
         }
 
@@ -46,7 +51,7 @@ public final class NightVisionCommand extends BaseCommand {
         Integer duration = parseDuration(arg1);
         if (duration != null) {
             if (!sender.hasPermission("craftedgateway.nightvision.duration")) {
-                sender.sendMessage(NamedTextColor.RED + "You don't have permission to use durations.");
+                audiences.sender(sender).sendMessage(Component.text("You don't have permission to use durations.", NamedTextColor.RED));
                 return;
             }
             applyNightVision(player, player, duration);
@@ -56,7 +61,7 @@ public final class NightVisionCommand extends BaseCommand {
         Player target = Bukkit.getPlayer(arg1);
         if (target != null) {
             if (!sender.hasPermission("craftedgateway.nightvision.others")) {
-                sender.sendMessage(NamedTextColor.RED + "You don't have permission to toggle night vision for others.");
+                audiences.sender(sender).sendMessage(Component.text("You don't have permission to toggle night vision for others.", NamedTextColor.RED));
                 return;
             }
 
@@ -64,12 +69,12 @@ public final class NightVisionCommand extends BaseCommand {
                 Integer targetDuration = parseDuration(arg2);
                 if (targetDuration != null) {
                     if (!sender.hasPermission("craftedgateway.nightvision.duration")) {
-                        sender.sendMessage(NamedTextColor.RED + "You don't have permission to use durations.");
+                        audiences.sender(sender).sendMessage(Component.text("You don't have permission to use durations.", NamedTextColor.RED));
                         return;
                     }
                     applyNightVision(player, target, targetDuration);
                 } else {
-                    sender.sendMessage(NamedTextColor.RED + "Invalid duration format. Use formats like 30s, 5m, or 1h.");
+                    audiences.sender(sender).sendMessage(Component.text("Invalid duration format. Use formats like 30s, 5m, or 1h.", NamedTextColor.RED));
                 }
             } else {
                 toggleNightVision(player, target, -1);
@@ -77,14 +82,14 @@ public final class NightVisionCommand extends BaseCommand {
             return;
         }
 
-        sender.sendMessage(NamedTextColor.RED + "Player not found: " + arg1);
+        audiences.sender(sender).sendMessage(Component.text("Player not found: " + arg1, NamedTextColor.RED));
     }
 
     @Subcommand("on")
     @Description("Enable night vision.")
     public void onEnable(CommandSender sender, @Optional String durationArg) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(NamedTextColor.RED + "This command can only be used by players.");
+            audiences.sender(sender).sendMessage(Component.text("This command can only be used by players.", NamedTextColor.RED));
             return;
         }
 
@@ -94,12 +99,12 @@ public final class NightVisionCommand extends BaseCommand {
             Integer duration = parseDuration(durationArg);
             if (duration != null) {
                 if (!sender.hasPermission("craftedgateway.nightvision.duration")) {
-                    sender.sendMessage(NamedTextColor.RED + "You don't have permission to use durations.");
+                    audiences.sender(sender).sendMessage(Component.text("You don't have permission to use durations.", NamedTextColor.RED));
                     return;
                 }
                 applyNightVision(player, player, duration);
             } else {
-                sender.sendMessage(NamedTextColor.RED + "Invalid duration format. Use formats like 30s, 5m, or 1h.");
+                audiences.sender(sender).sendMessage(Component.text("Invalid duration format. Use formats like 30s, 5m, or 1h.", NamedTextColor.RED));
             }
         } else {
             applyNightVision(player, player, Integer.MAX_VALUE);
@@ -110,7 +115,7 @@ public final class NightVisionCommand extends BaseCommand {
     @Description("Disable night vision.")
     public void onDisable(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(NamedTextColor.RED + "This command can only be used by players.");
+            audiences.sender(sender).sendMessage(Component.text("This command can only be used by players.", NamedTextColor.RED));
             return;
         }
 
@@ -139,17 +144,17 @@ public final class NightVisionCommand extends BaseCommand {
 
         if (sender.equals(target)) {
             if (durationTicks == Integer.MAX_VALUE) {
-                sender.sendMessage(NamedTextColor.GREEN + "Night vision enabled.");
+                audiences.player(sender).sendMessage(Component.text("Night vision enabled.", NamedTextColor.GREEN));
             } else {
-                sender.sendMessage(NamedTextColor.GREEN + "Night vision enabled for " + formatDuration(durationTicks) + ".");
+                audiences.player(sender).sendMessage(Component.text("Night vision enabled for " + formatDuration(durationTicks) + ".", NamedTextColor.GREEN));
             }
         } else {
             if (durationTicks == Integer.MAX_VALUE) {
-                sender.sendMessage(NamedTextColor.GREEN + "Night vision enabled for " + target.getName() + ".");
+                audiences.player(sender).sendMessage(Component.text("Night vision enabled for " + target.getName() + ".", NamedTextColor.GREEN));
             } else {
-                sender.sendMessage(NamedTextColor.GREEN + "Night vision enabled for " + target.getName() + " for " + formatDuration(durationTicks) + ".");
+                audiences.player(sender).sendMessage(Component.text("Night vision enabled for " + target.getName() + " for " + formatDuration(durationTicks) + ".", NamedTextColor.GREEN));
             }
-            target.sendMessage(NamedTextColor.GREEN + "Night vision has been enabled for you.");
+            audiences.player(target).sendMessage(Component.text("Night vision has been enabled for you.", NamedTextColor.GREEN));
         }
     }
 
@@ -157,10 +162,10 @@ public final class NightVisionCommand extends BaseCommand {
         target.removePotionEffect(PotionEffectType.NIGHT_VISION);
 
         if (sender.equals(target)) {
-            sender.sendMessage(NamedTextColor.YELLOW + "Night vision disabled.");
+            audiences.player(sender).sendMessage(Component.text("Night vision disabled.", NamedTextColor.YELLOW));
         } else {
-            sender.sendMessage(NamedTextColor.YELLOW + "Night vision disabled for " + target.getName() + ".");
-            target.sendMessage(NamedTextColor.YELLOW + "Night vision has been disabled for you.");
+            audiences.player(sender).sendMessage(Component.text("Night vision disabled for " + target.getName() + ".", NamedTextColor.YELLOW));
+            audiences.player(target).sendMessage(Component.text("Night vision has been disabled for you.", NamedTextColor.YELLOW));
         }
     }
 
