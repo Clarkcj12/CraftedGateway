@@ -39,7 +39,7 @@ dependencies {
     implementation 'net.kyori:adventure-text-minimessage:5.0.1'
     implementation 'net.kyori:adventure-platform-bukkit:4.4.1'
     implementation 'co.aikar:acf-bukkit:0.5.1-SNAPSHOT'
-    shade 'com.google.code.gson:gson:2.13.2'
+    shade 'com.google.code.gson:gson:2.14.0'
     compileOnly 'net.luckperms:api:5.5'
 }
 
