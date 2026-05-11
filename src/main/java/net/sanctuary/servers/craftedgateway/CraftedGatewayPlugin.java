@@ -54,7 +54,7 @@ public final class CraftedGatewayPlugin extends JavaPlugin {
         commandManager.registerCommand(new GatewayCommand(this));
         commandManager.registerCommand(new VotdCommand(this, votdService));
         commandManager.registerCommand(new RadioCommand(this, radioService));
-        commandManager.registerCommand(new NightVisionCommand());
+        commandManager.registerCommand(new NightVisionCommand(audiences));
         sendConsoleStatus(version, Component.text("ready").color(NamedTextColor.GREEN));
         getLogger().info("CraftedGateway v" + version + " is ready.");
     }
