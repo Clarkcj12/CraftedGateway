@@ -1,6 +1,6 @@
 ﻿# CraftedGateway
 
-CraftedGateway is a lightweight Minecraft plugin for SanctuaryMC (Arclight / Spigot hybrid) focused on clean commands and a configurable Verse of the Day system.
+CraftedGateway is a lightweight Minecraft plugin for SanctuaryMC (Paper) focused on clean commands and a configurable Verse of the Day system.
 
 ## Features
 - `/cg` status command with Adventure output.
@@ -11,8 +11,8 @@ CraftedGateway is a lightweight Minecraft plugin for SanctuaryMC (Arclight / Spi
 - Configurable Bible version and API endpoints.
 
 ## Requirements
-- Java 17
-- Arclight / Spigot API 1.20.x
+- Java 21
+- Paper API 1.20.1
 - Internet access for verse API calls
 
 ## Installation
