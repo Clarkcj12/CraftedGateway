@@ -1,6 +1,6 @@
 ﻿# CraftedGateway
 
-CraftedGateway is a lightweight Minecraft plugin for SanctuaryMC (Paper) focused on clean commands and a configurable Verse of the Day system.
+CraftedGateway is a lightweight Minecraft plugin for SanctuaryMC running on a Paper-compatible hybrid server environment (Paper 1.20.1 + NeoForge), focused on clean commands and a configurable Verse of the Day system.
 
 ## Features
 - `/cg` status command with Adventure output.
@@ -13,6 +13,7 @@ CraftedGateway is a lightweight Minecraft plugin for SanctuaryMC (Paper) focused
 ## Requirements
 - Java 21
 - Paper API 1.20.1
+- Server runtime: SanctuaryMC's hybrid Paper 1.20.1 + NeoForge environment
 - Internet access for verse API calls
 
 ## Installation

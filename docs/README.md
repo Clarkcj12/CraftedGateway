@@ -1,5 +1,7 @@
 ﻿# CraftedGateway Documentation
 
+CraftedGateway targets Paper API 1.20.1 and is intended to run on SanctuaryMC's hybrid Paper 1.20.1 + NeoForge server environment using Java 21.
+
 ## Commands
 - `/cg` - show plugin status.
 - `/cg reload` - reload all configuration.

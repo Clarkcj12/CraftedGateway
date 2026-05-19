@@ -13,7 +13,7 @@ No test suite exists in this project.
 
 ## Architecture Overview
 
-CraftedGateway is a Minecraft Paper plugin (Java 21, API 1.20.1) for SanctuaryMC that provides:
+CraftedGateway is a Minecraft plugin targeting Paper API 1.20.1 and running on SanctuaryMC's hybrid Paper 1.20.1 + NeoForge server environment (Java 21) that provides:
 - Verse of the Day (VOTD) system with API integration
 - Live radio now-playing announcements via AzuraCast WebSocket
 - Dynamic tablist with placeholders
@@ -23,7 +23,7 @@ CraftedGateway is a Minecraft Paper plugin (Java 21, API 1.20.1) for SanctuaryMC
 - **ACF (Aikar Command Framework)** - Command handling, relocated to `net.sanctuary.servers.craftedgateway.acf`
 - **Adventure API** - Modern text formatting with MiniMessage support
 - **Gson** - JSON parsing for API responses
-- **Paper API** - Server platform API target for Paper 1.20.1
+- **Paper API** - Compile-time server platform API target for Paper 1.20.1
 
 ### Package Structure
 
