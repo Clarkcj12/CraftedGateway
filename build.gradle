@@ -32,7 +32,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT'
+    compileOnly 'io.papermc.paper:paper-api:26.2.build.112-stable'
     implementation 'net.kyori:adventure-api:5.1.1'
     implementation 'net.kyori:adventure-text-serializer-legacy:5.1.1'
     implementation 'net.kyori:adventure-text-minimessage:5.1.1'
